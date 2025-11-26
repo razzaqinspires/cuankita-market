@@ -1,0 +1,14 @@
+{
+  "status": "ONLINE",
+  "last_updated": 1764155259400,
+  "readable_time": "26/11/2025, 11.07.39",
+  "market": {
+    "price": 661,
+    "trend": "📉 TURUN",
+    "supply": 100000
+  },
+  "stats": {
+    "total_investors": 1,
+    "system_version": "2.1.0"
+  }
+}
