@@ -1,8 +1,9 @@
 {
-  "deposit_rate": 0.1,
+  "deposit_rate": 0.05,
   "service_fee_flat": 0,
   "broadcast_price_per_user": 500,
-  "owner_jid": "628xxxxxxxxxx@s.whatsapp.net",
+  "owner_jid": "6288804074510@s.whatsapp.net",
+  "bot_number": "6283891067389",
   "maintenance_mode": false,
-  "system_version": "2.0.0"
+  "system_version": "2.1.0"
 }

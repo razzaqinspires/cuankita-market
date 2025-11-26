@@ -1,33 +1,79 @@
-// URL ini ASUMSI file JSON diunggah di root repository GitHub Pages Anda
-const MARKET_DATA_URL = './data/market.json'; 
+/**
+ * SCRIPT PENGAMBIL DATA PASAR (ROBUST VERSION)
+ * Mengambil data dari web/data/market.json secara realtime.
+ */
+
+// Path relatif terhadap file index.html
+// Karena index.html ada di folder web/, dan data ada di web/data/
+// Maka path yang benar adalah ./data/market.json
+const DATA_SOURCE = "./data/market.json";
 
 async function fetchMarketData() {
-    try {
-        const response = await fetch(MARKET_DATA_URL + '?t=' + new Date().getTime()); // Hindari Cache
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const data = await response.json();
-        
-        const priceElement = document.getElementById('market-status');
-        
-        // Tampilkan Data
-        priceElement.innerHTML = `
-            <div class="price">Rp ${data.current_price.toLocaleString()}</div>
-            <div class="trend">${data.trend}</div>
-            <small>Total Supply: ${data.total_supply.toLocaleString()} $ARA</small>
-            <p>Terakhir update: ${new Date(data.timestamp).toLocaleTimeString()}</p>
-        `;
-        
-        // Atur warna berdasarkan tren
-        priceElement.querySelector('.price').style.color = data.trend.includes('NAIK') ? '#008000' : '#CC0000';
+  const loadingState = document.getElementById("loading-state");
+  const dataContent = document.getElementById("data-content");
 
-    } catch (e) {
-        console.error("Gagal memuat data pasar:", e);
-        document.getElementById('market-status').innerHTML = '<p style="color:red;">Server data offline atau file JSON tidak ditemukan.</p>';
+  try {
+    // Tambahkan timestamp agar browser tidak cache data lama
+    const response = await fetch(DATA_SOURCE + "?t=" + new Date().getTime());
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status} - File JSON belum di-push Bot.`);
     }
+
+    const json = await response.json();
+
+    // Sembunyikan loading, Tampilkan data
+    loadingState.style.display = "none";
+    dataContent.style.display = "block";
+
+    // UPDATE UI
+    const priceEl = document.getElementById("price-display");
+    const trendEl = document.getElementById("trend-display");
+
+    // Format Harga
+    priceEl.innerText = `Rp ${json.market.price.toLocaleString("id-ID")}`;
+
+    // Warna & Simbol Trend
+    if (
+      json.market.trend.includes("NAIK") ||
+      json.market.trend.includes("MOON")
+    ) {
+      priceEl.className = "price trend-up";
+      trendEl.className = "trend-up";
+      trendEl.innerText = `📈 ${json.market.trend}`;
+    } else if (
+      json.market.trend.includes("TURUN") ||
+      json.market.trend.includes("CRASH")
+    ) {
+      priceEl.className = "price trend-down";
+      trendEl.className = "trend-down";
+      trendEl.innerText = `📉 ${json.market.trend}`;
+    } else {
+      priceEl.className = "price";
+      trendEl.style.color = "#7f8c8d";
+      trendEl.innerText = `➖ ${json.market.trend}`;
+    }
+
+    // Statistik Lain
+    document.getElementById("supply-display").innerText =
+      json.market.supply.toLocaleString();
+    document.getElementById("investor-display").innerText =
+      json.stats.total_investors;
+
+    // Format Waktu (Ambil jam menit detik saja)
+    const dateObj = new Date(json.last_updated);
+    document.getElementById("time-display").innerText =
+      dateObj.toLocaleTimeString("id-ID");
+  } catch (error) {
+    console.error("Fetch Error:", error);
+    loadingState.innerHTML = `
+            <span style="color:red">⚠️ Data Offline</span><br>
+            <small>${error.message}</small><br>
+            <small>Menunggu Bot melakukan Auto-Push...</small>
+        `;
+  }
 }
 
-// Update setiap 10 detik (Walaupun file JSON diupdate lebih jarang, ini memastikan UI fresh)
-setInterval(fetchMarketData, 10000); 
-fetchMarketData(); // Panggil pertama kali
+// Refresh setiap 5 detik
+setInterval(fetchMarketData, 5000);
+fetchMarketData(); // Jalankan segera saat load

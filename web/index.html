@@ -3,22 +3,88 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cuankita Exchange - Realtime</title>
+    <title>Cuankita Exchange - Realtime Market</title>
     <style>
-        body { font-family: sans-serif; text-align: center; margin: 50px; }
-        .price { font-size: 3em; color: #008000; font-weight: bold; }
-        .trend { font-size: 1.5em; }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            text-align: center; 
+            margin: 0; padding: 0;
+            background-color: #f4f4f9;
+            color: #333;
+        }
+        .container {
+            max-width: 600px;
+            margin: 50px auto;
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        h1 { color: #2c3e50; margin-bottom: 5px; }
+        .subtitle { color: #7f8c8d; font-size: 0.9em; margin-bottom: 30px; }
+        
+        .card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid #e9ecef;
+        }
+
+        .price { font-size: 3.5em; font-weight: 800; margin: 10px 0; }
+        .trend-up { color: #27ae60; }
+        .trend-down { color: #c0392b; }
+        
+        .btn-wa {
+            display: inline-block;
+            background-color: #25D366;
+            color: white;
+            padding: 15px 30px;
+            text-decoration: none;
+            border-radius: 50px;
+            font-weight: bold;
+            font-size: 1.1em;
+            transition: transform 0.2s;
+            box-shadow: 0 4px 6px rgba(37, 211, 102, 0.3);
+        }
+        .btn-wa:hover { transform: scale(1.05); }
+        .stats-grid { display: flex; justify-content: space-around; margin-top: 10px; font-size: 0.9em; color: #555; }
+        
+        /* Loading Animation */
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 20px; height: 20px; animation: spin 2s linear infinite; display: inline-block; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
-    <h1>💎 CUANKITA $ARA MARKET</h1>
-    <p>Data terakhir diperbarui dari Bot Otonom:</p>
-    
-    <div id="market-status">
-        <p>Loading market data...</p>
-    </div>
 
-    <p><a href="https://wa.me/nomorbotanda">Masuk via WhatsApp Bot</a></p>
+    <div class="container">
+        <h1>💎 CUANKITA MARKET</h1>
+        <p class="subtitle">Official Real-Time Stock Exchange ($ARA)</p>
+        
+        <div id="market-card" class="card">
+            <div id="loading-state">
+                <div class="loader"></div> Memuat data pasar...
+            </div>
+            <div id="data-content" style="display: none;">
+                <div id="price-display" class="price">Rp -</div>
+                <div id="trend-display" style="font-size: 1.2em; font-weight: bold;">-</div>
+                <hr style="border: 0; border-top: 1px solid #ddd; margin: 20px 0;">
+                <div class="stats-grid">
+                    <div>📦 Supply<br><strong id="supply-display">-</strong></div>
+                    <div>👥 Investor<br><strong id="investor-display">-</strong></div>
+                    <div>🕒 Update<br><strong id="time-display">-</strong></div>
+                </div>
+            </div>
+        </div>
+
+        <a href="https://wa.me/6283891067389?text=.menu" class="btn-wa">
+            🤖 Masuk via WhatsApp Bot
+        </a>
+
+        <p style="margin-top: 20px; font-size: 0.8em; color: #aaa;">
+            Powered by Autonomous Engine v2.1
+        </p>
+    </div>
 
     <script src="assets/script.js"></script>
 </body>
