@@ -1,0 +1,41 @@
+# --- DEPENDENCIES ---
+node_modules/
+package-lock.json
+# (package-lock.json opsional di-ignore, tapi kalau kerja sendiri gapapa di-ignore biar bersih)
+
+# --- WHATSAPP SESSION (SANGAT RAHASIA!) ---
+# Ini berisi akses login WA Anda. Jangan pernah di-upload!
+auth_info_baileys/
+
+# --- DATABASE VAULT (PRIVASI KEUANGAN) ---
+# Kita ignore isinya agar saldo user tidak bocor ke publik
+storage/live/*.json
+storage/temp/
+storage/backups/
+storage/archives/
+storage/inspection/
+
+# Pengecualian: Kita ingin folder 'storage/live' tetap ada strukturnya di git
+# (Nanti kita buat file .gitkeep kosong)
+!storage/live/.gitkeep
+
+# --- CONFIG & SECRETS ---
+.env
+# Jika config.json berisi API Key pribadi, ignore juga. 
+# Tapi kalau cuma rate standar, boleh tidak di-ignore. 
+# Saran Ara: Ignore saja biar aman.
+storage/live/config.json
+
+# --- LOGS & SYSTEM ---
+logs/
+*.log
+npm-debug.log
+.DS_Store
+Thumbs.db
+.vscode/
+
+# --- WEB BRIDGE (PENTING) ---
+# Kita mau upload web/, TAPI kita tidak mau upload file json statis 
+# jika itu dianggap sampah history.
+# TAPI: Karena Boss mau GitHub Pages baca ini, JANGAN di-ignore.
+# Jadi bagian web/data/market.json DIBIARKAN TERBUKA.
