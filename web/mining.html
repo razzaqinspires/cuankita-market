@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cuankita Mining Center</title>
+    <style>
+        :root { --bg: #0b0e11; --panel: #181a20; --neon: #00d2ff; --text: #eaecef; }
+        body { font-family: 'Courier New', monospace; background-color: var(--bg); color: var(--text); margin: 0; padding: 20px; text-align: center; }
+        
+        .container { max-width: 800px; margin: 0 auto; }
+        
+        /* HEADER */
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; padding-bottom: 15px; margin-bottom: 20px; }
+        .logo { font-weight: bold; font-size: 24px; color: var(--neon); text-shadow: 0 0 10px var(--neon); }
+        .btn-back { color: #888; text-decoration: none; border: 1px solid #333; padding: 5px 10px; border-radius: 4px; }
+
+        /* MINING RIG VISUAL */
+        .rig-container { background: var(--panel); border: 1px solid #333; border-radius: 10px; padding: 20px; position: relative; overflow: hidden; }
+        .fan-grid { display: flex; justify-content: center; gap: 20px; margin-bottom: 20px; }
+        .fan { width: 80px; height: 80px; border: 5px solid #333; border-radius: 50%; position: relative; animation: spin 0s linear infinite; }
+        .fan::after { content: ''; position: absolute; top: 10px; left: 35px; width: 10px; height: 60px; background: #444; }
+        .fan::before { content: ''; position: absolute; top: 35px; left: 10px; width: 60px; height: 10px; background: #444; }
+        
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        .spinning { animation-duration: 0.5s; border-color: var(--neon); box-shadow: 0 0 15px var(--neon); }
+
+        /* TERMINAL LOG */
+        .terminal { background: #000; color: #0f0; font-size: 12px; height: 150px; overflow-y: hidden; padding: 10px; text-align: left; border-radius: 5px; margin-bottom: 20px; border: 1px solid #333; font-family: monospace; }
+        .log-line { margin: 2px 0; }
+
+        /* AD SPACE (Tempat Iklan) */
+        .ad-banner { background: #222; color: #555; padding: 20px; margin: 20px 0; border: 1px dashed #444; display: flex; justify-content: center; align-items: center; min-height: 100px; }
+
+        /* CONTROLS */
+        .btn-mine { background: var(--neon); color: #000; border: none; padding: 15px 40px; font-size: 18px; font-weight: bold; cursor: pointer; border-radius: 50px; box-shadow: 0 0 20px rgba(0, 210, 255, 0.3); transition: 0.3s; }
+        .btn-mine:disabled { background: #333; color: #666; box-shadow: none; cursor: not-allowed; }
+        
+        /* RESULT BOX */
+        .hash-box { background: #1a1a1a; padding: 15px; border: 1px solid var(--neon); margin-top: 20px; display: none; }
+        .hash-code { font-size: 24px; font-weight: bold; color: #fff; letter-spacing: 2px; display: block; margin: 10px 0; user-select: all; background: #000; padding: 10px; }
+        .copy-tip { font-size: 12px; color: #aaa; }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="header">
+            <div class="logo">⚡ CUANKITA MINER</div>
+            <a href="index.html" class="btn-back">← Back to Exchange</a>
+        </div>
+
+        <div class="ad-banner">
+            [ ADSENSE BANNER 728x90 HERE ]
+        </div>
+
+        <div class="rig-container">
+            <div class="fan-grid">
+                <div class="fan" id="fan1"></div>
+                <div class="fan" id="fan2"></div>
+                <div class="fan" id="fan3"></div>
+            </div>
+            
+            <div class="terminal" id="terminal">
+                <div class="log-line">> System ready...</div>
+                <div class="log-line">> Waiting for user input...</div>
+            </div>
+
+            <button id="startBtn" class="btn-mine" onclick="startMining()">START MINING</button>
+
+            <div id="resultArea" class="hash-box">
+                <p>🎉 BLOCK FOUND! REWARD BOOSTED!</p>
+                <span class="hash-code" id="hashCode">---</span>
+                <p class="copy-tip">Copy kode ini dan kirim ke Bot WA: <b>.mine [kode]</b></p>
+            </div>
+        </div>
+
+        <div class="ad-banner">
+            [ ADSENSE BANNER 300x250 HERE ]
+        </div>
+    </div>
+
+    <script src="assets/mining.js"></script>
+</body>
+</html>

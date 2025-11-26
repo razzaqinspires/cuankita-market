@@ -1,9 +1,9 @@
 const db = require("../database/core");
 
 // Konfigurasi Mining
-const MINING_REWARD_MIN = 1;
-const MINING_REWARD_MAX = 5;
-const COOLDOWN_MINUTES = 60; // Bisa nambang setiap 60 menit
+const BASE_REWARD = 1; // Reward malas (cuma ketik .mine)
+const BOOST_MULTIPLIER = 10; // Reward rajin (buka web)
+const COOLDOWN_MINUTES = 60;
 
 function formatDuration(ms) {
   const minutes = Math.floor(ms / 60000);
@@ -15,7 +15,7 @@ async function performMine(ctx) {
   const users = db.load("users");
   const user = users[ctx.from] || { saldo: 0, assets: {} };
 
-  // Cek Cooldown
+  // 1. Cek Cooldown
   const lastMine = user.last_mine_time || 0;
   const now = Date.now();
   const diff = now - lastMine;
@@ -24,34 +24,65 @@ async function performMine(ctx) {
   if (diff < cooldownMs) {
     const timeLeft = cooldownMs - diff;
     return ctx.sock.sendMessage(ctx.from, {
-      text: `⏳ *COOLDOWN*\nEnergi habis! Istirahat dulu.\n\nBisa nambang lagi dalam:\n*${formatDuration(timeLeft)}*`,
+      text: `⏳ *MESIN PANAS*\nIstirahat dulu Boss.\n\nBisa nambang lagi dalam:\n*${formatDuration(timeLeft)}*`,
     });
   }
 
-  // Gacha Reward (Dapat Token Random)
-  const reward =
-    Math.floor(Math.random() * (MINING_REWARD_MAX - MINING_REWARD_MIN + 1)) +
-    MINING_REWARD_MIN;
+  // 2. Cek Boost Code (Dari Website)
+  const inputCode = ctx.args[0];
+  let finalReward = Math.floor(Math.random() * 3) + BASE_REWARD; // 1-3 Token base
+  let isBoosted = false;
 
-  // Update Data
+  if (inputCode) {
+    // Validasi Sederhana: Kode harus berakhiran Jam Saat Ini
+    // Contoh: BOOST-A1B2C310 (10 adalah jam 10 pagi)
+    const currentHour = new Date().getHours().toString();
+
+    if (inputCode.startsWith("BOOST-") && inputCode.endsWith(currentHour)) {
+      finalReward *= BOOST_MULTIPLIER;
+      isBoosted = true;
+    } else {
+      return ctx.sock.sendMessage(ctx.from, {
+        text: "❌ Kode Hash Kadaluarsa/Salah!\nSilakan ambil kode baru di Website.",
+      });
+    }
+  }
+
+  // 3. Update Data
   user.assets = user.assets || {};
-  user.assets.ara_coin = (user.assets.ara_coin || 0) + reward;
+  user.assets.ara_coin = (user.assets.ara_coin || 0) + finalReward;
   user.last_mine_time = now;
 
   db.save("users", users);
 
-  // Cek Harga Pasar (untuk pamer valuasi)
+  // 4. Respon
   const market = db.load("market_data");
   const price = market.current_price || 1000;
-  const value = reward * price;
+  const value = finalReward * price;
 
-  await ctx.sock.sendMessage(ctx.from, {
-    text: `⛏️ *MINING SUKSES*\n\nAnda menemukan: *${reward} $ARA*\n(Senilai ± Rp ${value.toLocaleString()})\n\nTotal Aset: ${user.assets.ara_coin} $ARA\n_Ketik .market untuk jual._`,
-  });
+  let msg = "";
+  if (isBoosted) {
+    msg =
+      `🚀 *BOOSTED MINING SUKSES*\n` +
+      `Kode Valid! Anda dapat bonus iklan.\n\n` +
+      `⛏️ Hasil: *${finalReward} $ARA* (10x Lipat)\n` +
+      `💰 Nilai: Rp ${value.toLocaleString()}\n` +
+      `💼 Total Aset: ${user.assets.ara_coin} $ARA`;
+  } else {
+    msg =
+      `⛏️ *MINING BIASA SUKSES*\n` +
+      `Hasil: *${finalReward} $ARA*\n\n` +
+      `💡 *Tips Cuan:*\n` +
+      `Dapatkan hasil *10x LIPAT* dengan mengambil kode hash di website kami!\n` +
+      `👉 https://razzaqinspires.github.io/cuankita-market/web/mining.html`;
+  }
+
+  await ctx.sock.sendMessage(ctx.from, { text: msg });
 }
 
+// ... (Fungsi performDaily biarkan sama) ...
 async function performDaily(ctx) {
-  // Logika mirip mining, tapi cooldown 24 jam dan reward Rupiah (Saldo)
+  // ... (Kode performDaily yang lama) ...
   const users = db.load("users");
   const user = users[ctx.from];
 
@@ -65,7 +96,7 @@ async function performDaily(ctx) {
     });
   }
 
-  const rewardRp = 5000; // Kasih gopek biar seneng
+  const rewardRp = 5000;
   user.saldo = (user.saldo || 0) + rewardRp;
   user.last_daily_time = now;
 

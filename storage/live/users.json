@@ -1,8 +1,22 @@
 {
   "120148069470311@lid": {
-    "saldo": 526690,
+    "saldo": 12537,
     "assets": {
-      "ara_coin": 500
-    }
+      "ara_coin": 1203
+    },
+    "last_daily_time": 1764157410693,
+    "positions": [
+      {
+        "id": "1416",
+        "type": "SHORT",
+        "margin": 10000,
+        "leverage": 1,
+        "entryPrice": 672,
+        "size": 10000,
+        "timestamp": 1764159461416
+      }
+    ],
+    "last_mine_time": 1764159387041,
+    "account_type": "DEMO"
   }
 }

@@ -3,107 +3,131 @@ const path = require("path");
 const db = require("../database/core");
 const simpleGit = require("simple-git");
 
-/**
- * WEB BRIDGE SERVICE
- * Menghubungkan Data Internal Bot -> Website Publik (GitHub Pages)
- */
-
-// Lokasi Folder Web
-// Kita naik 2 level dari src/services/ ke root project
 const ROOT_DIR = path.resolve(__dirname, "../../");
 const WEB_DIR = path.join(ROOT_DIR, "web");
 const WEB_DATA_DIR = path.join(WEB_DIR, "data");
 const JSON_OUTPUT = path.join(WEB_DATA_DIR, "market.json");
 
-// Inisialisasi Git
 const git = simpleGit(ROOT_DIR);
 
-// Pastikan folder web/data ada, jika belum buat otomatis
-if (!fs.existsSync(WEB_DATA_DIR)) {
+if (!fs.existsSync(WEB_DATA_DIR))
   fs.mkdirSync(WEB_DATA_DIR, { recursive: true });
+
+// --- SIMULASI ORDER BOOK (Agar terlihat seperti pasar asli) ---
+function generateOrderBook(currentPrice) {
+  const bids = [];
+  const asks = [];
+
+  // Generate 5 antrian Beli (Bids) - Harga di bawah current
+  for (let i = 0; i < 5; i++) {
+    const price = Math.floor(currentPrice * (1 - 0.001 * (i + 1)));
+    const amount = Math.floor(Math.random() * 1000) + 10;
+    bids.push({ p: price, a: amount });
+  }
+
+  // Generate 5 antrian Jual (Asks) - Harga di atas current
+  for (let i = 0; i < 5; i++) {
+    const price = Math.floor(currentPrice * (1 + 0.001 * (i + 1)));
+    const amount = Math.floor(Math.random() * 1000) + 10;
+    asks.push({ p: price, a: amount });
+  }
+
+  return { bids, asks };
 }
 
-/**
- * FUNGSI 1: Export Data Lokal (Realtime Cepat)
- * Dijalankan setiap 5-10 detik untuk update file JSON lokal.
- */
 function exportToJSON() {
   try {
-    // 1. Ambil Data Pasar dari Vault Database
     const market = db.load("market_data");
-
-    // 2. Ambil Statistik User (Contoh: Total Investor)
     const users = db.load("users");
     const totalInvestors = Object.keys(users).length;
+    const currentPrice = market.current_price || 1000;
+    const timestamp = Date.now();
+    const timeString = new Date().toLocaleTimeString("id-ID");
 
-    // 3. Buat Payload Data Publik (Jangan ekspos data sensitif!)
+    // --- HISTORY CHART LOGIC ---
+    let existingData = { history: [], trades: [] };
+    if (fs.existsSync(JSON_OUTPUT)) {
+      try {
+        existingData = JSON.parse(fs.readFileSync(JSON_OUTPUT, "utf-8"));
+      } catch (e) {}
+    }
+
+    // 1. Update Chart History
+    let history = existingData.history || [];
+    // Hanya push jika harga berubah atau setiap 5 cycle biar chart ga terlalu rapat
+    if (
+      history.length === 0 ||
+      history[history.length - 1].p !== currentPrice ||
+      Math.random() > 0.7
+    ) {
+      history.push({ t: timeString, p: currentPrice });
+    }
+    if (history.length > 50) history = history.slice(history.length - 50); // Simpan 50 titik
+
+    // 2. Update Recent Trades (Simulasi transaksi terjadi)
+    let trades = existingData.trades || [];
+    // Randomly add trade
+    if (Math.random() > 0.3) {
+      const type = Math.random() > 0.5 ? "BUY" : "SELL";
+      const amount = Math.floor(Math.random() * 500) + 10;
+      trades.unshift({ t: timeString, type, p: currentPrice, a: amount });
+    }
+    if (trades.length > 10) trades = trades.slice(0, 10); // Simpan 10 trade terakhir
+
+    // 3. Generate Order Book
+    const orderBook = generateOrderBook(currentPrice);
+
     const publicData = {
       status: "ONLINE",
-      last_updated: Date.now(),
-      readable_time: new Date().toLocaleString("id-ID"),
+      last_updated: timestamp,
       market: {
-        price: market.current_price || 1000,
+        price: currentPrice,
         trend: market.trend || "STABLE",
-        supply: market.total_supply || 100000,
+        high: Math.floor(currentPrice * 1.05), // Mock High
+        low: Math.floor(currentPrice * 0.95), // Mock Low
+        vol: Math.floor(Math.random() * 100000), // Mock Volume
       },
+      orderBook: orderBook,
+      trades: trades,
+      history: history,
       stats: {
         total_investors: totalInvestors,
-        system_version: "2.1.0",
       },
     };
 
-    // 4. Tulis ke file market.json
     fs.writeFileSync(JSON_OUTPUT, JSON.stringify(publicData, null, 2));
-    // console.log("🌐 Web Bridge: Data market.json diperbarui.");
   } catch (error) {
     console.error("❌ Gagal Export JSON:", error);
   }
 }
 
-/**
- * FUNGSI 2: Push ke GitHub (Periodik)
- * Dijalankan setiap 5-10 menit agar tidak terkena Rate Limit GitHub.
- */
 async function syncToGitHub() {
   try {
-    // Cek apakah folder ini adalah repo git
     const isRepo = await git.checkIsRepo();
-    if (!isRepo) {
-      console.log("⚠️ Folder project belum di-init Git. Lewati auto-push.");
-      return;
-    }
+    if (!isRepo) return;
 
-    console.log("☁️  Memulai Auto-Push ke GitHub Pages...");
+    // Cek status dulu biar gak error empty commit
+    const status = await git.status();
+    if (status.files.length === 0) return;
 
-    // Git Add -> Commit -> Push
     await git.add("./web/data/market.json");
-    await git.commit("🤖 Auto-Update: Market Data Realtime");
+    await git.commit("🤖 Market Data Update");
     await git.push();
-
-    console.log("✅ Data berhasil di-push ke GitHub!");
+    console.log("☁️  Web Dashboard Updated!");
   } catch (error) {
     console.error("❌ Gagal Push Git:", error.message);
   }
 }
 
-/**
- * MAIN RUNNER
- */
 function startBridge() {
   console.log("🌉 Web Bridge Service Started.");
+  setInterval(exportToJSON, 5000); // Update lokal lebih cepat (5 detik)
 
-  // 1. Update JSON Lokal setiap 10 detik
-  setInterval(exportToJSON, 10000);
-
-  // 2. Push ke GitHub setiap 5 menit (300.000 ms)
-  // Ubah jadi true jika Boss sudah setting Git Remote
+  // AUTO PUSH (Wajib True untuk Website Live)
   const ENABLE_GIT_PUSH = true;
-
   if (ENABLE_GIT_PUSH) {
-    setInterval(syncToGitHub, 300000);
+    setInterval(syncToGitHub, 60000); // Push tiap 1 menit (Biar web terlihat realtime)
   }
-
-  // Jalankan sekali saat start
   exportToJSON();
 }
 

@@ -1,79 +1,135 @@
-/**
- * SCRIPT PENGAMBIL DATA PASAR (ROBUST VERSION)
- * Mengambil data dari web/data/market.json secara realtime.
- */
+const DATA_SOURCE = './data/market.json'; 
+let priceChart = null;
 
-// Path relatif terhadap file index.html
-// Karena index.html ada di folder web/, dan data ada di web/data/
-// Maka path yang benar adalah ./data/market.json
-const DATA_SOURCE = "./data/market.json";
+async function updateDashboard() {
+    try {
+        const res = await fetch(DATA_SOURCE + '?t=' + Date.now());
+        if (!res.ok) return;
+        const data = await res.json();
 
-async function fetchMarketData() {
-  const loadingState = document.getElementById("loading-state");
-  const dataContent = document.getElementById("data-content");
+        // 1. UPDATE HEADER & STATS
+        const price = data.market.price;
+        const trend = data.market.trend;
+        
+        const headerPrice = document.getElementById('header-price');
+        const centerPrice = document.getElementById('current-price-mid');
+        const colorClass = trend.includes('TURUN') ? 'text-red' : 'text-green';
+        
+        headerPrice.innerText = `Rp ${price.toLocaleString()}`;
+        headerPrice.className = `price-ticker ${colorClass}`;
+        
+        centerPrice.innerText = price.toLocaleString();
+        centerPrice.className = colorClass;
 
-  try {
-    // Tambahkan timestamp agar browser tidak cache data lama
-    const response = await fetch(DATA_SOURCE + "?t=" + new Date().getTime());
+        document.getElementById('stat-trend').innerText = trend;
+        document.getElementById('stat-trend').className = colorClass;
+        document.getElementById('stat-high').innerText = data.market.high.toLocaleString();
+        document.getElementById('stat-low').innerText = data.market.low.toLocaleString();
+        document.getElementById('stat-vol').innerText = formatK(data.market.vol);
 
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status} - File JSON belum di-push Bot.`);
+        // 2. RENDER ORDER BOOK
+        renderOrderBook(data.orderBook);
+
+        // 3. RENDER TRADES
+        renderTrades(data.trades);
+
+        // 4. UPDATE CHART
+        updateChart(data.history);
+
+    } catch (e) {
+        console.log("Syncing...", e);
     }
-
-    const json = await response.json();
-
-    // Sembunyikan loading, Tampilkan data
-    loadingState.style.display = "none";
-    dataContent.style.display = "block";
-
-    // UPDATE UI
-    const priceEl = document.getElementById("price-display");
-    const trendEl = document.getElementById("trend-display");
-
-    // Format Harga
-    priceEl.innerText = `Rp ${json.market.price.toLocaleString("id-ID")}`;
-
-    // Warna & Simbol Trend
-    if (
-      json.market.trend.includes("NAIK") ||
-      json.market.trend.includes("MOON")
-    ) {
-      priceEl.className = "price trend-up";
-      trendEl.className = "trend-up";
-      trendEl.innerText = `📈 ${json.market.trend}`;
-    } else if (
-      json.market.trend.includes("TURUN") ||
-      json.market.trend.includes("CRASH")
-    ) {
-      priceEl.className = "price trend-down";
-      trendEl.className = "trend-down";
-      trendEl.innerText = `📉 ${json.market.trend}`;
-    } else {
-      priceEl.className = "price";
-      trendEl.style.color = "#7f8c8d";
-      trendEl.innerText = `➖ ${json.market.trend}`;
-    }
-
-    // Statistik Lain
-    document.getElementById("supply-display").innerText =
-      json.market.supply.toLocaleString();
-    document.getElementById("investor-display").innerText =
-      json.stats.total_investors;
-
-    // Format Waktu (Ambil jam menit detik saja)
-    const dateObj = new Date(json.last_updated);
-    document.getElementById("time-display").innerText =
-      dateObj.toLocaleTimeString("id-ID");
-  } catch (error) {
-    console.error("Fetch Error:", error);
-    loadingState.innerHTML = `
-            <span style="color:red">⚠️ Data Offline</span><br>
-            <small>${error.message}</small><br>
-            <small>Menunggu Bot melakukan Auto-Push...</small>
-        `;
-  }
 }
 
-// Refresh setiap 5 detik
-setInterval(fetchMarketData, 5000);
-fetchMarketData(); // Jalankan segera saat load
+function formatK(num) {
+    return num > 1000 ? (num/1000).toFixed(1) + 'K' : num;
+}
+
+function renderOrderBook(book) {
+    const asksEl = document.getElementById('asks-container');
+    const bidsEl = document.getElementById('bids-container');
+    
+    // ASKS (Jual - Merah) - Urutan Terbalik (Termahal di atas)
+    let asksHtml = '';
+    book.asks.slice().reverse().forEach(item => {
+        asksHtml += `
+            <div class="order-row">
+                <span class="text-red">${item.p.toLocaleString()}</span>
+                <span class="text-white">${item.a}</span>
+            </div>`;
+    });
+    asksEl.innerHTML = asksHtml;
+
+    // BIDS (Beli - Hijau)
+    let bidsHtml = '';
+    book.bids.forEach(item => {
+        bidsHtml += `
+            <div class="order-row">
+                <span class="text-green">${item.p.toLocaleString()}</span>
+                <span class="text-white">${item.a}</span>
+            </div>`;
+    });
+    bidsEl.innerHTML = bidsHtml;
+}
+
+function renderTrades(trades) {
+    const container = document.getElementById('trades-container');
+    let html = '';
+    trades.forEach(t => {
+        const color = t.type === 'BUY' ? 'text-green' : 'text-red';
+        html += `
+            <div class="order-row">
+                <span class="${color}">${t.p.toLocaleString()}</span>
+                <span class="text-white">${t.a}</span>
+                <span style="color:#848e9c">${t.t}</span>
+            </div>`;
+    });
+    container.innerHTML = html;
+}
+
+function updateChart(history) {
+    const ctx = document.getElementById('mainChart').getContext('2d');
+    const labels = history.map(h => h.t);
+    const prices = history.map(h => h.p);
+
+    if (priceChart) {
+        priceChart.data.labels = labels;
+        priceChart.data.datasets[0].data = prices;
+        priceChart.update('none'); // Update tanpa animasi biar gak kedip
+    } else {
+        priceChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Price',
+                    data: prices,
+                    borderColor: '#F7BF64',
+                    backgroundColor: 'rgba(247, 191, 100, 0.1)',
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    fill: true,
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { display: false },
+                    y: { 
+                        position: 'right',
+                        grid: { color: '#2b3139' },
+                        ticks: { color: '#848e9c' }
+                    }
+                },
+                animation: false
+            }
+        });
+    }
+}
+
+// Polling tiap 2 detik
+setInterval(updateDashboard, 2000);
+updateDashboard();

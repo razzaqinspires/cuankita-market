@@ -1,37 +1,42 @@
 const db = require("../database/core");
+const drawing = require("../utils/drawing"); // Import Visual Engine
 
-// KONFIGURASI PASAR
-const FLOOR_PRICE = 50; // 🛡️ Harga mentok bawah (Anti 0)
-const CEILING_PRICE = 100000; // Harga mentok atas
+// --- KONFIGURASI PASAR ---
+const FLOOR_PRICE = 50; // Harga terendah (Anti 0)
+const CEILING_PRICE = 100000; // Harga tertinggi
 
+/**
+ * ALGORITMA HARGA DINAMIS
+ * Menghasilkan harga baru berdasarkan volatilitas random atau intervensi bandar.
+ */
 function getCurrentPrice() {
   const market = db.load("market_data");
 
-  // Inisialisasi Data Pasar
+  // Inisialisasi jika data kosong
   if (!market.current_price) {
     market.current_price = 1000;
     market.trend = "STABLE";
+    market.total_supply = 100000;
     db.save("market_data", market);
   }
 
-  // --- ALGORITMA FLUKTUASI ALAMI ---
-  // Hanya berubah jika belum ada intervensi bandar
+  // Logika Fluktuasi Alami (Hanya jalan jika tidak ada manual override)
   if (!market.manual_override) {
-    const volatility = 0.05; // 5% naik turun
+    const volatility = 0.05; // 5% swing
     const change = 1 + (Math.random() * (volatility * 2) - volatility);
     let newPrice = Math.floor(market.current_price * change);
 
-    // 🛡️ SAFETY NET (Agar tidak hangus/nol)
+    // Safety Net
     if (newPrice < FLOOR_PRICE) newPrice = FLOOR_PRICE;
     if (newPrice > CEILING_PRICE) newPrice = CEILING_PRICE;
 
     market.current_price = newPrice;
     market.trend = change >= 1 ? "📈 NAIK" : "📉 TURUN";
+    market.last_updated = Date.now();
 
-    // Simpan
     db.save("market_data", market);
   } else {
-    // Reset manual override setelah satu kali cek (biar kembali alami)
+    // Reset flag manual setelah satu siklus
     market.manual_override = false;
     db.save("market_data", market);
   }
@@ -39,32 +44,95 @@ function getCurrentPrice() {
   return market;
 }
 
+/**
+ * SISTEM LIKUIDASI (FUTURES)
+ * Mengecek semua posisi user. Jika rugi > 80%, posisi dihapus paksa.
+ */
+function checkLiquidation(currentPrice) {
+  const users = db.load("users");
+  let hasChanges = false;
+
+  Object.keys(users).forEach((userJid) => {
+    const user = users[userJid];
+    if (!user.positions || user.positions.length === 0) return;
+
+    // Loop mundur agar aman saat splice array
+    for (let i = user.positions.length - 1; i >= 0; i--) {
+      const pos = user.positions[i];
+      let pnlPercent = 0;
+
+      if (pos.type === "LONG") {
+        pnlPercent =
+          ((currentPrice - pos.entryPrice) / pos.entryPrice) * pos.leverage;
+      } else {
+        pnlPercent =
+          ((pos.entryPrice - currentPrice) / pos.entryPrice) * pos.leverage;
+      }
+
+      // Threshold Likuidasi: Rugi 80% (-0.8)
+      if (pnlPercent <= -0.8) {
+        console.log(
+          `☠️ LIQUIDATION: User ${userJid} posisi #${pos.id} hangus.`,
+        );
+        user.positions.splice(i, 1); // Hapus posisi
+        hasChanges = true;
+      }
+    }
+  });
+
+  if (hasChanges) db.save("users", users);
+}
+
+/**
+ * 1. CEK PASAR (VISUAL CHART)
+ * Mengirim gambar grafik alih-alih teks biasa.
+ */
 async function performCheckMarket(ctx) {
   const market = getCurrentPrice();
   const users = db.load("users");
   const userTokens = users[ctx.from]?.assets?.ara_coin || 0;
+  const valuation = userTokens * market.current_price;
 
-  const caption =
-    `📊 *PASAR SAHAM $ARA*\n` +
-    `---------------------------\n` +
-    `Harga: *Rp ${market.current_price.toLocaleString()}* / token\n` +
-    `Tren: ${market.trend}\n` +
-    `---------------------------\n` +
-    `💼 Dompet: ${userTokens} $ARA\n` +
-    `💵 Nilai: Rp ${(userTokens * market.current_price).toLocaleString()}\n\n` +
-    `_Aset aman. Harga bisa naik/turun, tapi jumlah token tetap._`;
+  await ctx.sock.sendMessage(ctx.from, {
+    text: "⏳ Sedang menggambar chart realtime...",
+  });
 
-  await ctx.sock.sendMessage(ctx.from, { text: caption });
+  // Generate Chart Image (Hybrid Rendering)
+  try {
+    const buffer = await drawing.createMarketChart();
+
+    const caption =
+      `📊 *MARKET OVERVIEW*\n` +
+      `---------------------------\n` +
+      `💼 Aset Anda: *${userTokens.toLocaleString()} $ARA*\n` +
+      `💵 Valuasi: *Rp ${valuation.toLocaleString()}*\n` +
+      `---------------------------\n` +
+      `_Ketik .buy atau .sell untuk transaksi._\n` +
+      `_Pantau Live di Web: https://razzaqinspires.github.io/cuankita-market/web/ _`;
+
+    await ctx.sock.sendMessage(ctx.from, {
+      image: buffer,
+      caption: caption,
+    });
+  } catch (e) {
+    console.error("Gagal kirim gambar:", e);
+    // Fallback teks jika gambar gagal
+    await ctx.sock.sendMessage(ctx.from, {
+      text: `Harga: Rp ${market.current_price}\nTren: ${market.trend}`,
+    });
+  }
 }
 
-async function performBuyToken(ctx) {
+/**
+ * 2. BELI TOKEN (SPOT)
+ */
+async function performBuy(ctx) {
   const amountToken = parseInt(ctx.args[0]);
   if (!amountToken || amountToken <= 0)
     return ctx.sock.sendMessage(ctx.from, { text: "⚠️ Contoh: .buy 10" });
 
   const market = getCurrentPrice();
-  const pricePerToken = market.current_price;
-  const totalPrice = amountToken * pricePerToken;
+  const totalPrice = amountToken * market.current_price;
 
   const users = db.load("users");
   const user = users[ctx.from] || { saldo: 0, assets: {} };
@@ -77,19 +145,26 @@ async function performBuyToken(ctx) {
 
   user.saldo -= totalPrice;
   user.assets = user.assets || {};
-  user.assets.ara_coin = (user.assets.ara_coin || 0) + amountToken; // JUMLAH TOKEN BERTAMBAH
+  user.assets.ara_coin = (user.assets.ara_coin || 0) + amountToken;
 
-  // Efek Beli: Harga Naik dikit
+  // Efek Pasar: Demand naik -> Harga naik sedikit (2%)
   market.current_price = Math.floor(market.current_price * 1.02);
+
   db.save("market_data", market);
   db.save("users", users);
 
+  // Cek likuidasi user lain akibat perubahan harga ini
+  checkLiquidation(market.current_price);
+
   await ctx.sock.sendMessage(ctx.from, {
-    text: `✅ *BELI BERHASIL*\nAnda kini punya ${user.assets.ara_coin} $ARA.`,
+    text: `✅ *BELI BERHASIL*\n+ ${amountToken} $ARA\n- Rp ${totalPrice.toLocaleString()}`,
   });
 }
 
-async function performSellToken(ctx) {
+/**
+ * 3. JUAL TOKEN (SPOT)
+ */
+async function performSell(ctx) {
   const amountToken = parseInt(ctx.args[0]);
   if (!amountToken || amountToken <= 0)
     return ctx.sock.sendMessage(ctx.from, { text: "⚠️ Contoh: .sell 10" });
@@ -101,7 +176,7 @@ async function performSellToken(ctx) {
 
   if (userAssets < amountToken) {
     return ctx.sock.sendMessage(ctx.from, {
-      text: `❌ Barang kurang! Cuma punya ${userAssets} $ARA`,
+      text: `❌ Token kurang! Cuma punya ${userAssets} $ARA`,
     });
   }
 
@@ -109,61 +184,125 @@ async function performSellToken(ctx) {
   const fee = Math.floor(rawTotal * 0.05); // Fee Boss 5%
   const netTotal = rawTotal - fee;
 
-  user.assets.ara_coin -= amountToken; // JUMLAH TOKEN BERKURANG
+  user.assets.ara_coin -= amountToken;
   user.saldo += netTotal;
 
-  // Efek Jual: Harga Turun dikit
+  // Efek Pasar: Supply naik -> Harga turun sedikit (2%)
   market.current_price = Math.floor(market.current_price * 0.98);
-  // Tapi tetap dijaga Floor Price
   if (market.current_price < FLOOR_PRICE) market.current_price = FLOOR_PRICE;
 
   db.save("market_data", market);
   db.save("users", users);
 
+  checkLiquidation(market.current_price);
+
   await ctx.sock.sendMessage(ctx.from, {
-    text: `✅ *JUAL BERHASIL*\nDapat Duit: Rp ${netTotal.toLocaleString()}`,
+    text: `✅ *JUAL BERHASIL*\n- ${amountToken} $ARA\n💰 Dapat: Rp ${netTotal.toLocaleString()}\n(Fee 5%: Rp ${fee.toLocaleString()})`,
   });
 }
 
-// --- FITUR BARU: GOD MODE (BANDAR) ---
+/**
+ * 4. LEADERBOARD (TOP 10 SULTAN)
+ */
+async function performLeaderboardCheck(ctx) {
+  const users = db.load("users");
+  const market = getCurrentPrice();
+  const currentPrice = market.current_price;
+
+  const rankings = [];
+
+  // Hitung Kekayaan (Saldo + Aset)
+  for (const jid in users) {
+    const user = users[jid];
+    const araCoin = user.assets?.ara_coin || 0;
+    const saldo = user.saldo || 0;
+    const assetsVal = araCoin * currentPrice;
+    const totalWealth = saldo + assetsVal;
+
+    if (totalWealth > 0) {
+      rankings.push({
+        name: user.name || jid.split("@")[0],
+        wealth: totalWealth,
+        jid: jid,
+      });
+    }
+  }
+
+  // Sortir Descending
+  rankings.sort((a, b) => b.wealth - a.wealth);
+
+  let msg = `🏆 *TOP 10 CUANKITA LEADERBOARD*\n`;
+  msg += `_Wealth per Rp ${currentPrice.toLocaleString()} $ARA_\n`;
+  msg += `-------------------------------------------------\n`;
+
+  for (let i = 0; i < Math.min(10, rankings.length); i++) {
+    const rank = rankings[i];
+    const medal =
+      i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}.`;
+
+    msg += `${medal} ${rank.name.padEnd(15)}: *Rp ${rank.wealth.toLocaleString("id-ID")}*\n`;
+  }
+
+  // Posisi User Sendiri
+  const userRank = rankings.findIndex((r) => r.jid === ctx.from) + 1;
+  const userWealth = rankings.find((r) => r.jid === ctx.from)?.wealth || 0;
+
+  msg += `-------------------------------------------------\n`;
+  msg += `💎 Posisi Anda: #${userRank} (Rp ${userWealth.toLocaleString()})\n`;
+
+  await ctx.sock.sendMessage(ctx.from, { text: msg });
+}
+
+/**
+ * 5. COMMAND KHUSUS OWNER (BANDAR PUMP/DUMP)
+ */
 async function performPumpDump(ctx) {
-  // Validasi: Cuma Boss yang bisa (Ganti logic ini dengan cek ID Boss)
-  // if (ctx.from !== BOSS_ID) return;
+  const config = db.load("config");
 
-  const action = ctx.args[0]; // pump atau dump
-  const percent = parseInt(ctx.args[1]) || 10; // Berapa persen
-
-  const market = db.load("market_data");
-  market.current_price = market.current_price || 1000;
-
-  if (action === "pump") {
-    market.current_price = Math.floor(
-      market.current_price * (1 + percent / 100),
-    );
-    market.trend = "🚀 MOON!!";
-    await ctx.sock.sendMessage(ctx.from, {
-      text: `📈 BANDAR BERAKSI: Harga dipompa naik ${percent}%!`,
-    });
-  } else if (action === "dump") {
-    market.current_price = Math.floor(
-      market.current_price * (1 - percent / 100),
-    );
-    market.trend = "🩸 CRASH!!";
-    await ctx.sock.sendMessage(ctx.from, {
-      text: `📉 BANDAR BERAKSI: Harga dibanting turun ${percent}%!`,
+  // Validasi Owner JID
+  if (ctx.from !== config.owner_jid) {
+    return ctx.sock.sendMessage(ctx.from, {
+      text: "❌ Perintah ini hanya untuk Boss.",
     });
   }
 
-  // Jaga batas aman
-  if (market.current_price < FLOOR_PRICE) market.current_price = FLOOR_PRICE;
+  const action = ctx.args[0]?.toLowerCase();
+  const amount = parseFloat(ctx.args[1]);
 
-  market.manual_override = true; // Tandai agar algoritma alami tidak menimpa langsung
+  if (!["pump", "dump"].includes(action) || isNaN(amount)) {
+    return ctx.sock.sendMessage(ctx.from, {
+      text: "⚠️ Format: .bandar pump 10",
+    });
+  }
+
+  const market = db.load("market_data");
+  let newPrice = market.current_price || 1000;
+
+  if (action === "pump") {
+    newPrice *= 1 + amount / 100;
+    market.trend = `🚀 PUMP (${amount}%)`;
+  } else {
+    newPrice *= 1 - amount / 100;
+    market.trend = `🩸 DUMP (${amount}%)`;
+    if (newPrice < FLOOR_PRICE) newPrice = FLOOR_PRICE;
+  }
+
+  market.current_price = Math.round(newPrice);
+  market.manual_override = true; // Kunci harga agar tidak ditimpa algoritma alami sesaat
+  market.last_updated = Date.now();
+
   db.save("market_data", market);
+  checkLiquidation(market.current_price); // Cek korban likuidasi
+
+  await ctx.sock.sendMessage(ctx.from, {
+    text: `✅ [BANDAR] Harga dimanipulasi ke Rp ${market.current_price.toLocaleString()} (${market.trend})`,
+  });
 }
 
 module.exports = {
   performCheckMarket,
-  performBuyToken,
-  performSellToken,
+  performBuy,
+  performSell,
+  performLeaderboardCheck,
   performPumpDump,
 };

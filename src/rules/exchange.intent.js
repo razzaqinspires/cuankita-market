@@ -1,27 +1,34 @@
 const { when } = require("../engine/dsl");
 const exchange = require("../services/exchange");
+const registry = require("../engine/commandRegistry");
 
-console.log("📈 Loading Stock Market Rules...");
+console.log("⚙️ Loading Exchange Rules...");
 
-// Niat: Cek Harga Pasar
-when(`when message: "market"`).perform(exchange.performCheckMarket).commit();
+// --- DAFTAR KE MENU ---
+registry.register("buy", "EXCHANGE", "Beli Token $ARA (Spot)", "[jumlah]");
+registry.register("sell", "EXCHANGE", "Jual Token $ARA (Spot)", "[jumlah]");
+registry.register("market", "PASAR", "Cek harga saham realtime");
 
-// Niat: Beli Saham/Token
+// --- IMPLEMENTASI RULE ---
+
+// 1. Buy -> performBuy
 when(`when message: "buy"`)
   .expect("amount")
-  .perform(exchange.performBuyToken)
+  .perform(exchange.performBuy)
   .commit();
 
-// Niat: Jual Saham/Token
+// 2. Sell -> performSell
 when(`when message: "sell"`)
   .expect("amount")
-  .perform(exchange.performSellToken)
+  .perform(exchange.performSell)
   .commit();
 
-// Niat: Bandar Memainkan Harga (Rahasia)
-// Contoh: when message: "bandar pump 50" (Naikkan 50%)
+// 3. Market -> performCheckMarket (JANGAN performMarketCheck!)
+when(`when message: "market"`).perform(exchange.performCheckMarket).commit();
+
+// 4. Bandar -> performPumpDump
 when(`when message: "bandar"`)
-  .expect("action") // pump atau dump
-  .expect("percent")
+  .expect("action")
+  .expect("amount")
   .perform(exchange.performPumpDump)
   .commit();

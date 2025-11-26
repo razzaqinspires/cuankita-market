@@ -4,6 +4,7 @@ const {
   DisconnectReason,
   fetchLatestBaileysVersion,
   isJidGroup,
+  isJidUser,
   jidNormalizedUser,
 } = require("@whiskeysockets/baileys");
 const pino = require("pino");
@@ -16,10 +17,18 @@ const db = require("./database/core");
 const { serialize } = require("./utils/serializer");
 const webBridge = require("./services/webBridge");
 
+const session = require("./engine/sessionManager");
+const onboarding = require("./services/onboarding");
+const finance = require("./services/finance");
+const drawing = require("./utils/drawing"); // Utk visual
+
 // Load Rules
 require("./rules/finance.intent");
 require("./rules/exchange.intent");
 require("./rules/mining.intent");
+require("./rules/general.intent");
+require("./rules/trading.intent");
+require("./rules/marketing.intent");
 
 const PORT = 3000;
 let sock;
@@ -154,13 +163,10 @@ async function connectWA() {
     const m = messages[0];
     if (!m.message || m.key.remoteJid === "status@broadcast") return;
 
-    // Serializer Canggih
     const msg = serialize(sock, m);
 
-    // Filter: Hanya respon jika ada command (.)
-    if (!msg.command) return;
-
-    // Context Object untuk Intent Engine
+    // ⚠️ FIX: DEFINISIKAN CONTEXT (CTX) DI PALING ATAS
+    // Agar bisa dipakai oleh Gatekeeper di bawahnya
     const ctx = {
       sock,
       from: msg.remoteJid,
@@ -172,12 +178,64 @@ async function connectWA() {
       quoted: msg.quoted,
     };
 
-    // Kirim ke Otak (Intent Engine)
-    const matched = await engine.interpret(msg.command, ctx);
-
-    if (!matched) {
-      // Logic Fallback AI bisa ditaruh disini
+    // --- GATEKEEPER 1: PRIVATE CHAT ONLY ---
+    if (isJidGroup(msg.remoteJid)) {
+      const config = db.load("config");
+      const allowedGroups = config.allowed_groups || [];
+      if (!allowedGroups.includes(msg.remoteJid)) return;
     }
+
+    // --- GATEKEEPER 2: CEK USER BARU (ONBOARDING) ---
+    const users = db.load("users");
+    const userExists = !!users[msg.remoteJid];
+    const currentSession = session.getSession(msg.remoteJid);
+
+    // User Baru & Belum ada sesi -> Mulai Onboarding
+    if (!userExists && !currentSession) {
+      await onboarding.startOnboarding(ctx); // CTX sudah aman disini
+      return;
+    }
+
+    // Sedang Onboarding -> Lanjut
+    if (currentSession && currentSession.type.startsWith("ONBOARDING")) {
+      await onboarding.handleOnboarding(ctx, currentSession);
+      return;
+    }
+
+    // --- GATEKEEPER 3: LOCKED TRANSACTION (PENDING DEPOSIT) ---
+    if (currentSession && currentSession.type === "LOCKED_TRANSACTION") {
+      if (msg.m.message?.imageMessage) {
+        await finance.handleProofUpload(ctx, currentSession);
+        return;
+      } else {
+        // Abaikan teks biasa jika sedang lock
+        return;
+      }
+    }
+
+    // --- GATEKEEPER 4: REPLY HANDLER ---
+    if (currentSession && currentSession.type === "DEPOSIT_SELECT_METHOD") {
+      await finance.handleDepositStep(ctx, currentSession);
+      return;
+    }
+
+    // Pseudo-Buttons
+    if (msg.text.toLowerCase() === "switch real") {
+      ctx.args = ["REAL"];
+      await finance.performSwitchAccount(ctx);
+      return;
+    }
+    if (msg.text.toLowerCase() === "switch demo") {
+      ctx.args = ["DEMO"];
+      await finance.performSwitchAccount(ctx);
+      return;
+    }
+
+    // --- GATEKEEPER 5: COMMAND ENGINE ---
+    if (!msg.command) return;
+
+    // Eksekusi Command via Intent Engine
+    await engine.interpret(msg.command, ctx);
   });
 }
 
