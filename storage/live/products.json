@@ -1,0 +1,16 @@
+{
+  "ebook_starter": {
+    "name": "Ebook Mindset Miliarder",
+    "price": 50000,
+    "content": "Link Download: https://bit.ly/contoh-link-produk",
+    "type": "digital",
+    "sold_count": 0
+  },
+  "vip_access": {
+    "name": "Akses Grup VIP",
+    "price": 150000,
+    "content": "Silakan join grup via link ini: https://chat.whatsapp.com/xxxx",
+    "type": "service",
+    "sold_count": 0
+  }
+}

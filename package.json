@@ -1,0 +1,35 @@
+{
+  "name": "cuankita-autonomous",
+  "version": "2.1.0",
+  "description": "Bot WhatsApp Autonomous dengan Intention Engine, Atomic Database & Web Bridge",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "npx nodemon index.js",
+    "format": "npx prettier --write ."
+  },
+  "keywords": [
+    "whatsapp",
+    "bot",
+    "baileys",
+    "autonomous",
+    "atomic-db",
+    "stock-market"
+  ],
+  "author": "Ara & Boss",
+  "license": "ISC",
+  "dependencies": {
+    "@whiskeysockets/baileys": "^6.5.0",
+    "express": "^4.18.2",
+    "kill-port": "^2.0.1",
+    "openai": "^4.20.1",
+    "pino": "^8.16.1",
+    "qrcode-terminal": "^0.12.0",
+    "simple-git": "^3.22.0",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.3",
+    "prettier": "^3.1.0"
+  }
+}
