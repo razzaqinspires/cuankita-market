@@ -1,82 +1,92 @@
-const engine = require("./intentEngine");
+const intentEngine = require('./intentEngine');
 
 /**
- * DSL PARSER (Domain Specific Language)
- * Mengubah sintaks "When... Expect... Perform" menjadi Logic Eksekusi.
+ * DOMAIN SPECIFIC LANGUAGE (DSL)
+ * Penerjemah bahasa "When... Expect... Perform" menjadi Logic.
  */
 
-function when(line) {
-  // Regex untuk menangkap pola: when message: "kata_kunci"
-  // Contoh: when message: "deposit" -> keyword = deposit
-  const match = line.match(/when message: "(.*)"/);
-  const keyword = match ? match[1] : null;
+function when(input) {
+  let keyword = input;
 
-  // Container untuk menyimpan daftar parameter dan fungsi yang akan dijalankan
+  // 1. Support Format DSL: 'when message: "kata_kunci"'
+  // Regex untuk menangkap teks di dalam tanda kutip
+  const dslMatch = input.match(/when message: "(.*)"/);
+  
+  if (dslMatch) {
+      keyword = dslMatch[1]; // Ambil kata kuncinya saja (misal: "deposit")
+  }
+
+  // Normalisasi ke lowercase agar tidak sensitif huruf besar/kecil
+  keyword = keyword.toLowerCase();
+
+  // Container untuk menyimpan urutan logika
   const block = {
     expects: [],
-    performs: [],
+    performs: []
   };
 
-  // Return Chainable Methods (Agar bisa .expect().perform().commit())
+  // Return Object dengan Chaining Methods
   return {
-    // Menentukan parameter apa yang diharapkan (misal: [jumlah])
-    // Berguna untuk validasi atau dokumentasi otomatis nanti
+    /**
+     * Mendaftarkan parameter yang diharapkan (opsional, untuk validasi/dokumentasi)
+     * Contoh: .expect("amount")
+     */
     expect(field) {
       block.expects.push(field);
-      return this;
+      return this; // PENTING: Return this agar bisa di-chain (.expect(...).perform(...))
     },
 
-    // Menentukan fungsi Service mana yang akan dijalankan
+    /**
+     * Mendaftarkan fungsi service yang akan dijalankan
+     * Contoh: .perform(finance.performDeposit)
+     */
     perform(actionFunction) {
       block.performs.push(actionFunction);
-      return this;
+      return this; // Return this agar bisa di-chain
     },
 
-    // Mendaftarkan aturan ini ke dalam Otak Bot (Intent Engine)
+    /**
+     * Menyimpan aturan ke dalam Otak Bot (Intent Engine)
+     * Ini harus dipanggil di akhir rantai.
+     */
     commit() {
       if (!keyword) {
-        console.error(
-          "❌ DSL Error: Pattern 'when message' tidak valid pada baris:",
-          line,
-        );
-        return;
+          console.error("❌ DSL Error: Keyword kosong/tidak valid pada:", input);
+          return;
       }
 
       // Daftarkan ke Engine
-      engine.define(
-        // 1. MATCHER: Fungsi untuk mengecek apakah pesan user cocok dengan keyword
-        (input) => input === keyword.toLowerCase(),
-
-        // 2. HANDLER: Fungsi yang dijalankan jika cocok
+      intentEngine.define(
+        // 1. MATCHER (Pengecek)
+        // Cek apakah pesan user dimulai dengan keyword ini
+        (text) => text.startsWith(keyword), 
+        
+        // 2. HANDLER (Eksekutor)
         async (ctx) => {
-          console.log(`🤖 Executing Intent: [${keyword}]`);
-
-          try {
-            // Validasi Argumen Sederhana (Opsional)
-            // Jika intent butuh argumen tapi user tidak memberikannya
-            /* if (block.expects.length > 0 && ctx.args.length < block.expects.length) {
-                   await ctx.sock.sendMessage(ctx.from, { text: `⚠️ Format salah. Parameter kurang: ${block.expects.join(', ')}` });
-                   return;
-               } 
-               */
-
-            // Jalankan semua action yang didaftarkan secara berurutan
-            for (const action of block.performs) {
-              await action(ctx);
-            }
-          } catch (err) {
-            console.error(`❌ Error executing intent: ${err.message}`);
-            console.error(err.stack); // Print stack trace untuk debugging
-
-            // Beritahu user ada error (tapi jangan kasih detail teknis biar elegan)
-            await ctx.sock.sendMessage(ctx.from, {
-              text: "⚠️ Terjadi kesalahan sistem saat memproses niat Anda.",
-            });
-          }
-        },
+           console.log(`🤖 Executing Intent: [${keyword}]`);
+           
+           try {
+               // Jalankan semua action yang didaftarkan secara berurutan
+               for (const action of block.performs) {
+                   await action(ctx);
+               }
+           } catch (err) {
+               console.error(`❌ Error executing intent [${keyword}]:`, err);
+               if(ctx.sock) {
+                   await ctx.sock.sendMessage(ctx.from, { text: "⚠️ Terjadi kesalahan sistem internal." });
+               }
+           }
+        }
       );
-    },
+    }
   };
 }
 
-module.exports = { when };
+// Utility Helper (Opsional, jika dibutuhkan service lain)
+function getArgs(command, pattern) {
+    if (!command.toLowerCase().startsWith(pattern.toLowerCase())) return [];
+    const argsString = command.substring(pattern.length).trim();
+    return argsString ? argsString.split(/\s+/).filter(a => a.length > 0) : [];
+}
+
+module.exports = { when, getArgs };

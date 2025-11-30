@@ -1,34 +1,59 @@
-const { when } = require("../engine/dsl");
-const exchange = require("../services/exchange");
-const registry = require("../engine/commandRegistry");
+const { when } = require('../engine/dsl');
+const exchange = require('../services/exchange');
+const registry = require('../engine/commandRegistry');
 
 console.log("⚙️ Loading Exchange Rules...");
 
-// --- DAFTAR KE MENU ---
-registry.register("buy", "EXCHANGE", "Beli Token $ARA (Spot)", "[jumlah]");
-registry.register("sell", "EXCHANGE", "Jual Token $ARA (Spot)", "[jumlah]");
-registry.register("market", "PASAR", "Cek harga saham realtime");
+// ==========================================
+// 1. REGISTRASI MENU
+// ==========================================
 
-// --- IMPLEMENTASI RULE ---
+// Kategori: PASAR (Informasi)
+registry.register('market', 'PASAR', 'Cek harga saham realtime (Visual Chart)');
+registry.register('leaderboard', 'PASAR', 'Lihat Top 10 Sultan Terkaya (Real Account)');
 
-// 1. Buy -> performBuy
+// Kategori: EXCHANGE (Transaksi Spot)
+registry.register('buy', 'EXCHANGE', 'Beli Token $ARA (Spot Market)', '[jumlah]');
+registry.register('sell', 'EXCHANGE', 'Jual Token $ARA (Spot Market)', '[jumlah]');
+
+// Kategori: ADMIN (Bandar Mode)
+registry.register('bandar', 'ADMIN', 'Manipulasi Harga Pasar (Pump/Dump)', '[pump/dump] [persen]');
+
+
+// ==========================================
+// 2. DEFINISI NIAT (LOGIC MAPPING)
+// ==========================================
+
+// --- CEK PASAR ---
+when(`when message: "market"`)
+    .perform(exchange.performCheckMarket) 
+    .commit();
+
+// --- SPOT TRADING ---
 when(`when message: "buy"`)
-  .expect("amount")
-  .perform(exchange.performBuy)
-  .commit();
+    .expect("amount")
+    .perform(exchange.performBuy)
+    .commit();
 
-// 2. Sell -> performSell
 when(`when message: "sell"`)
-  .expect("amount")
-  .perform(exchange.performSell)
-  .commit();
+    .expect("amount")
+    .perform(exchange.performSell)
+    .commit();
 
-// 3. Market -> performCheckMarket (JANGAN performMarketCheck!)
-when(`when message: "market"`).perform(exchange.performCheckMarket).commit();
+// --- LEADERBOARD ---
+when(`when message: "leaderboard"`)
+    .perform(exchange.performLeaderboardCheck)
+    .commit();
+when(`when message: "top"`) // Alias singkat
+    .perform(exchange.performLeaderboardCheck)
+    .commit();
+when(`when message: "rank"`) // Alias singkat
+    .perform(exchange.performLeaderboardCheck)
+    .commit();
 
-// 4. Bandar -> performPumpDump
+// --- BANDAR MODE (Owner Only Logic ada di service) ---
 when(`when message: "bandar"`)
-  .expect("action")
-  .expect("amount")
-  .perform(exchange.performPumpDump)
-  .commit();
+    .expect("action")
+    .expect("amount")
+    .perform(exchange.performPumpDump)
+    .commit();

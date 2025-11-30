@@ -1,42 +1,77 @@
 /**
- * SESSION MANAGER
+ * SESSION MANAGER SYSTEM
  * Mengelola State (Status) User: Onboarding, Menunggu Reply, Pending Deposit.
+ * Berfungsi sebagai Short-Term Memory bot.
  */
 
+// Penyimpanan sesi di Memori RAM (Map)
+// Format: Key = JID User, Value = Object { type, data, timestamp }
 const sessions = new Map();
 
-// Set status user (sedang ngapain)
+/**
+ * Menyimpan status user saat ini.
+ * @param {string} jid - ID WhatsApp User (nomor@s.whatsapp.net)
+ * @param {string} type - Jenis aktivitas (misal: 'ONBOARDING_NAME', 'DEPOSIT_SELECT_METHOD')
+ * @param {object} data - Data tambahan (misal: nominal deposit yang sedang diproses)
+ */
 function setSession(jid, type, data = {}) {
-  sessions.set(jid, {
-    type: type, // Contoh: 'ONBOARDING_NAME', 'WAIT_PROOF'
-    data: data, // Data sementara (nama, gender, trx_id)
-    timestamp: Date.now(),
-  });
+    sessions.set(jid, {
+        type: type,
+        data: data,
+        timestamp: Date.now()
+    });
+    // console.log(`💾 Session SET for ${jid}: ${type}`);
 }
 
-// Ambil status user
+/**
+ * Mengambil status user saat ini.
+ * @param {string} jid - ID WhatsApp User
+ * @returns {object|undefined} Objek sesi atau undefined jika tidak ada sesi
+ */
 function getSession(jid) {
-  return sessions.get(jid);
+    return sessions.get(jid);
 }
 
-// Hapus sesi (selesai)
+/**
+ * Menghapus sesi user (digunakan saat proses selesai atau dibatalkan).
+ * @param {string} jid - ID WhatsApp User
+ */
 function clearSession(jid) {
-  sessions.delete(jid);
-}
-
-// Cek apakah user sedang terkunci (misal: Pending Deposit)
-function isLocked(jid) {
-  const sess = sessions.get(jid);
-  if (sess && sess.type === "LOCKED_TRANSACTION") {
-    const diff = Date.now() - sess.timestamp;
-    const timeout = 30 * 60 * 1000; // 30 Menit Lock
-    if (diff > timeout) {
-      clearSession(jid); // Auto unlock jika kelamaan
-      return false;
+    if (sessions.has(jid)) {
+        sessions.delete(jid);
+        // console.log(`🗑️ Session CLEARED for ${jid}`);
     }
-    return true;
-  }
-  return false;
 }
 
-module.exports = { setSession, getSession, clearSession, isLocked };
+/**
+ * Mengecek apakah user sedang dalam posisi terkunci (Locked Transaction).
+ * Digunakan agar user tidak bisa melakukan spam command lain saat sedang transaksi penting.
+ * @param {string} jid - ID WhatsApp User
+ * @returns {boolean} True jika terkunci
+ */
+function isLocked(jid) {
+    const sess = sessions.get(jid);
+    
+    // Cek tipe sesi
+    if (sess && sess.type === 'LOCKED_TRANSACTION') {
+        const diff = Date.now() - sess.timestamp;
+        const timeout = 30 * 60 * 1000; // Timeout 30 Menit
+        
+        // Jika sudah lebih dari 30 menit gantung, otomatis buka kunci
+        if (diff > timeout) {
+            clearSession(jid);
+            console.log(`🔓 Auto-unlock session for ${jid} (Timeout)`);
+            return false;
+        }
+        return true; // Masih terkunci
+    }
+    
+    return false; // Tidak terkunci
+}
+
+module.exports = { 
+    setSession, 
+    getSession, 
+    clearSession, 
+    isLocked 
+};

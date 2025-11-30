@@ -1,16 +1,32 @@
 {
-  "ebook_starter": {
-    "name": "Ebook Mindset Miliarder",
+  "EBOOK-STARTER": {
+    "id": "EBOOK-STARTER",
+    "type": "EBOOK",
+    "title": "Kitab Anti Miskin: Mindset 1%",
+    "desc": "Panduan dasar mengubah pola pikir budak korporat menjadi investor saham.",
     "price": 50000,
-    "content": "Link Download: https://bit.ly/contoh-link-produk",
-    "type": "digital",
-    "sold_count": 0
+    "content": "Terima kasih! Silakan download Ebook di sini: https://bit.ly/contoh-link-ebook-ara",
+    "sold": 128,
+    "created_at": 1716885000000
   },
-  "vip_access": {
-    "name": "Akses Grup VIP",
+  "VIP-SIGNAL": {
+    "id": "VIP-SIGNAL",
+    "type": "SERVICE",
+    "title": "Akses Grup VIP Signal",
+    "desc": "Masuk ke grup rahasia para Whale $ARA. Info pump lebih awal.",
     "price": 150000,
-    "content": "Silakan join grup via link ini: https://chat.whatsapp.com/xxxx",
-    "type": "service",
-    "sold_count": 0
+    "content": "Selamat datang di Circle Elite. Silakan join via link ini: https://chat.whatsapp.com/contoh-link-grup",
+    "sold": 45,
+    "created_at": 1716885000000
+  },
+  "AI-CREDIT-PACK": {
+    "id": "AI-CREDIT-PACK",
+    "type": "TOOL",
+    "title": "Paket Analis AI (10x Ask)",
+    "desc": "Kuota tambahan untuk bertanya ke Ara (.tanya) atau Analisa Pasar (.analisa).",
+    "price": 20000,
+    "content": "Kuota AI Anda telah ditambahkan +10.",
+    "sold": 312,
+    "created_at": 1716885000000
   }
 }

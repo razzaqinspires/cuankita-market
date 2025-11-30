@@ -1,85 +1,113 @@
-const db = require("../database/core");
-const session = require("../engine/sessionManager");
-const moment = require("moment");
+const db = require('../database/core');
+const session = require('../engine/sessionManager');
+const moment = require('moment'); 
 
-// Triggered jika user belum ada di database
 async function startOnboarding(ctx) {
-  await ctx.sock.sendMessage(ctx.from, {
-    text:
-      `👋 Selamat Datang di *Cuankita Private Ecosystem*.\n\n` +
-      `Sebelum memulai investasi, kami perlu mengenal Anda.\n` +
-      `Siapa nama panggilan Anda?`,
-  });
-  session.setSession(ctx.from, "ONBOARDING_NAME", {});
+    await ctx.sock.sendMessage(ctx.from, { 
+        text: `👋 Selamat Datang di *Cuankita Private Ecosystem*.\n\n` +
+              `Saya Ara, asisten pribadi Anda.\n` +
+              `Sebelum memulai investasi, mari lengkapi profil Anda.\n\n` +
+              `Siapa nama panggilan Anda?` 
+    });
+    session.setSession(ctx.from, 'ONBOARDING_NAME', {});
 }
 
-// Handler jawaban user
 async function handleOnboarding(ctx, userSession) {
-  const step = userSession.type;
-  const input = ctx.text.trim();
+    const step = userSession.type;
+    const input = ctx.text ? ctx.text.trim() : '';
 
-  // STEP 1: NAMA
-  if (step === "ONBOARDING_NAME") {
-    const temp = { name: input };
-    session.setSession(ctx.from, "ONBOARDING_GENDER", temp);
-    await ctx.sock.sendMessage(ctx.from, {
-      text: `Halo ${input}. Apa jenis kelamin Anda? (L/P)`,
-    });
-  }
+    if (!input) return; 
+    if (input.startsWith('.')) return; 
 
-  // STEP 2: GENDER
-  else if (step === "ONBOARDING_GENDER") {
-    const gender = input.toUpperCase() === "L" ? "Laki-laki" : "Perempuan";
-    const temp = { ...userSession.data, gender };
-    session.setSession(ctx.from, "ONBOARDING_DOB", temp);
-    await ctx.sock.sendMessage(ctx.from, {
-      text: `Oke. Terakhir, ketik Tanggal Lahir Anda.\nFormat: DD-MM-YYYY (Contoh: 12-05-1995)`,
-    });
-  }
+    // STEP 1: NAMA
+    if (step === 'ONBOARDING_NAME') {
+        const config = db.load('config');
+        
+        // CEK NAMA TERLARANG (ANTI IMPERSONATOR)
+        const forbiddenNames = ["OWNER", "ADMIN", "ARIFI RAZZAQ", "BOSS", "BANDAR", "CUANKITA"];
+        const isOwner = ctx.from === config.owner_jid;
 
-  // STEP 3: TANGGAL LAHIR & FINISH
-  else if (step === "ONBOARDING_DOB") {
-    const dob = moment(input, "DD-MM-YYYY");
-    if (!dob.isValid())
-      return ctx.sock.sendMessage(ctx.from, {
-        text: "⚠️ Format salah. Gunakan DD-MM-YYYY",
-      });
+        // Jika nama mengandung kata terlarang DAN bukan Owner asli -> Blokir
+        if (forbiddenNames.some(w => input.toUpperCase().includes(w)) && !isOwner) {
+            return ctx.sock.sendMessage(ctx.from, { 
+                text: "⚠️ Nama tersebut dilindungi oleh sistem. Gunakan nama lain." 
+            });
+        }
 
-    const age = moment().diff(dob, "years");
-    if (age < 17)
-      return ctx.sock.sendMessage(ctx.from, {
-        text: "⚠️ Maaf, Anda belum cukup umur (17+) untuk berinvestasi.",
-      });
+        if (input.length < 3) {
+            return ctx.sock.sendMessage(ctx.from, { text: "⚠️ Nama terlalu pendek. Masukkan minimal 3 huruf." });
+        }
+        
+        if (!/^[a-zA-Z\s]+$/.test(input)) {
+             return ctx.sock.sendMessage(ctx.from, { text: "⚠️ Gunakan nama asli (Huruf saja)." });
+        }
+        
+        const temp = { name: input };
+        session.setSession(ctx.from, 'ONBOARDING_GENDER', temp);
+        
+        await ctx.sock.sendMessage(ctx.from, { text: `Halo ${input} ✨\nApa jenis kelamin Anda? (Ketik L untuk Laki-laki, P untuk Perempuan)` });
+    }
+    
+    // STEP 2: GENDER
+    else if (step === 'ONBOARDING_GENDER') {
+        let gender = '';
+        const choice = input.toUpperCase();
+        
+        if (choice === 'L' || choice === 'LAKI') gender = 'Laki-laki';
+        else if (choice === 'P' || choice === 'PEREMPUAN') gender = 'Perempuan';
+        else return ctx.sock.sendMessage(ctx.from, { text: "⚠️ Ketik L atau P saja." });
 
-    // SIMPAN USER KE DB
-    const users = db.load("users");
-    users[ctx.from] = {
-      name: userSession.data.name,
-      gender: userSession.data.gender,
-      dob: input,
-      age: age,
-      saldo: 0, // Saldo Real
-      demo_saldo: 10000000, // Saldo Demo 10 Juta
-      account_type: "DEMO",
-      xp: 0,
-      joined_at: Date.now(),
-    };
-    db.save("users", users);
-    session.clearSession(ctx.from);
+        const temp = { ...userSession.data, gender };
+        session.setSession(ctx.from, 'ONBOARDING_DOB', temp);
+        
+        await ctx.sock.sendMessage(ctx.from, { text: `Oke. Terakhir, ketik Tanggal Lahir Anda.\nFormat: DD-MM-YYYY\n(Contoh: 12-05-1995)` });
+    }
 
-    // KIRIM RULES (GAMBAR IKLAN)
-    // Pastikan ada file rules.jpg di folder assets, atau pakai URL
-    // Disini kita pakai Text dulu biar aman
-    const rules =
-      `📜 *RULES & DISCLAIMER*\n\n` +
-      `1. Ini adalah High Risk Investment.\n` +
-      `2. Gunakan uang dingin.\n` +
-      `3. Kami tidak bertanggung jawab atas kerugian.\n\n` +
-      `Akun Anda saat ini: *DEMO (Latihan)*\n` +
-      `Ketik .menu untuk memulai.`;
+    // STEP 3: TANGGAL LAHIR
+    else if (step === 'ONBOARDING_DOB') {
+        const dob = moment(input, 'DD-MM-YYYY', true); 
+        
+        if (!dob.isValid()) {
+            return ctx.sock.sendMessage(ctx.from, { text: "⚠️ Format tanggal salah. Gunakan garis datar (-). Contoh: 01-01-2000" });
+        }
 
-    await ctx.sock.sendMessage(ctx.from, { text: rules });
-  }
+        const age = moment().diff(dob, 'years');
+        if (age < 17) {
+            return ctx.sock.sendMessage(ctx.from, { text: "⚠️ Maaf, Platform ini hanya untuk usia 17+ (Regulasi Investasi)." });
+        }
+
+        const users = db.load('users');
+        users[ctx.from] = {
+            name: userSession.data.name,
+            gender: userSession.data.gender,
+            dob: input,
+            age: age,
+            account_type: 'DEMO', 
+            balance_real: 0,
+            assets_real: {},
+            positions_real: [],
+            balance_demo: 500000, 
+            assets_demo: {},
+            positions_demo: [],
+            xp: 0,
+            joined_at: Date.now()
+        };
+        
+        db.save('users', users);
+        session.clearSession(ctx.from); 
+
+        const rules = `✅ *REGISTRASI BERHASIL*\n\n` +
+                      `Selamat bergabung, ${userSession.data.name}!\n` +
+                      `Akun Anda saat ini: *DEMO (Latihan)*\n` +
+                      `Saldo Awal: *Rp 500.000* (Uang Virtual)\n\n` +
+                      `📜 *RULES:*\n` +
+                      `1. Gunakan akun DEMO untuk belajar.\n` +
+                      `2. Dilarang spamming.\n` +
+                      `3. Keputusan investasi ada di tangan Anda.\n\n` +
+                      `Ketik *.menu* untuk memulai perjalanan cuan Anda! 🚀`;
+                      
+        await ctx.sock.sendMessage(ctx.from, { text: rules });
+    }
 }
 
 module.exports = { startOnboarding, handleOnboarding };

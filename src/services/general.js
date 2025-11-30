@@ -1,98 +1,128 @@
-const db = require("../database/core");
-const registry = require("../engine/commandRegistry");
+const db = require('../database/core');
+const registry = require('../engine/commandRegistry'); 
 
+// 1. MENU OTOMATIS (DYNAMIC & PERSONALIZED)
 async function performMenu(ctx) {
-  const config = db.load("config");
-  const categorizedCommands = registry.getCategorizedCommands();
+    const config = db.load('config');
+    const users = db.load('users');
+    const user = users[ctx.from]; // Ambil data user dari database
 
-  // PERBAIKAN LOGIKA HITUNG TOTAL COMMAND
-  let totalCommands = 0;
-  Object.values(categorizedCommands).forEach(
-    (list) => (totalCommands += list.length),
-  );
+    // LOGIKA SAPAAN
+    let greetingName = ctx.sender.split('@')[0]; // Default: Nomor HP
+    let ownerBadge = "";
 
-  let text = `🤖 *CUANKITA SYSTEM v${config.system_version || "2.3.0"}*
-👋 Halo, ${ctx.sender.split("@")[0]}
-_Total ${totalCommands} fitur siap digunakan._
-`;
+    // Cek apakah user sudah register
+    if (user && user.name) {
+        greetingName = user.name;
+    }
 
-  for (const category in categorizedCommands) {
-    text += `\n*${category.toUpperCase()}*\n`;
-    categorizedCommands[category].forEach((cmd) => {
-      text += `.${cmd.rawCommand} ${cmd.args} - ${cmd.description}\n`;
-    });
-  }
+    // Cek apakah ini Owner
+    if (ctx.from === config.owner_jid) {
+        ownerBadge = " 👑 [OWNER]";
+        // Jika owner belum set nama di database, panggil Boss
+        if (greetingName === ctx.sender.split('@')[0]) greetingName = "Big Boss";
+    }
 
-  text += `\n_Ketik perintah tanpa tanda kurung.\n_Powered by Intent-Aware Engine`;
+    const categorizedCommands = registry.getCategorizedCommands();
+    
+    // Hitung total fitur
+    let totalCommands = 0;
+    Object.values(categorizedCommands).forEach(list => totalCommands += list.length);
 
-  await ctx.sock.sendMessage(ctx.from, { text: text.trim() });
+    let text = `🤖 *CUANKITA SYSTEM v${config.system_version}*\n`;
+    text += `👋 Halo, *${greetingName}*${ownerBadge}\n`;
+    text += `_Total ${totalCommands} fitur siap digunakan._\n`;
+
+    // Loop Kategori
+    for (const category in categorizedCommands) {
+        text += `\n*${category.toUpperCase()}*\n`; 
+        categorizedCommands[category].forEach(cmd => {
+            text += `.${cmd.rawCommand} ${cmd.args} - ${cmd.description}\n`;
+        });
+    }
+
+    text += `\n_Ketik perintah tanpa tanda kurung._\n`;
+    text += `_Powered by Intent-Aware Engine_`;
+    
+    await ctx.sock.sendMessage(ctx.from, { text: text.trim() });
 }
 
+// 2. INFO OWNER
 async function performOwnerInfo(ctx) {
-  const config = db.load("config");
-  const ownerNum = config.owner_jid ? config.owner_jid.split("@")[0] : "-";
-  await ctx.sock.sendMessage(ctx.from, {
-    text: `👑 *OWNER INFO*\n\nNomor: wa.me/${ownerNum}\nStatus: Developer & Bandar Pasar`,
-  });
+    const config = db.load('config');
+    const ownerNum = config.owner_jid ? config.owner_jid.split('@')[0] : '-';
+    
+    await ctx.sock.sendMessage(ctx.from, { 
+        text: `👑 *OWNER INFO*\n\nNomor: wa.me/${ownerNum}\nStatus: Developer & Bandar Pasar\n\n_Hubungi Owner untuk Deposit/Withdraw atau kerjasama._`
+    });
 }
 
+// 3. PING
 async function performPing(ctx) {
-  const start = Date.now();
-  await ctx.sock.sendMessage(ctx.from, { text: "🏓 Pong!" });
-  const latensi = Date.now() - start;
-  await ctx.sock.sendMessage(ctx.from, {
-    text: `Kecepatan Respon: ${latensi}ms`,
-  });
+    const start = Date.now();
+    await ctx.sock.sendMessage(ctx.from, { text: '🏓 Pong!' });
+    const latensi = Date.now() - start;
+    await ctx.sock.sendMessage(ctx.from, { text: `Kecepatan Respon: ${latensi}ms` });
 }
 
-// --- FITUR BARU: LEADERBOARD (TOP GLOBAL) ---
+// 4. LEADERBOARD (FIX DISPLAY NAME)
 async function performLeaderboard(ctx) {
-  const users = db.load("users");
-  const market = db.load("market_data");
-  const price = market.current_price || 1000;
+    const users = db.load('users');
+    const market = db.load('market_data');
+    const price = market.current_price || 1000;
 
-  // 1. Ubah Object User ke Array dan Hitung Kekayaan
-  const richList = Object.keys(users).map((jid) => {
-    const u = users[jid];
-    const saldo = u.saldo || 0;
-    const assets = (u.assets?.ara_coin || 0) * price;
-    return {
-      jid: jid,
-      tag: jid.split("@")[0], // Ambil nomor HP
-      totalWealth: saldo + assets,
-    };
-  });
+    const rankings = [];
 
-  // 2. Urutkan dari Paling Kaya (Descending)
-  richList.sort((a, b) => b.totalWealth - a.totalWealth);
+    Object.keys(users).forEach(jid => {
+        const u = users[jid];
+        const saldo = u.balance_real || 0;
+        const assets = (u.assets_real?.ara_coin || 0) * price;
+        const totalWealth = saldo + assets;
 
-  // 3. Ambil Top 10
-  const top10 = richList.slice(0, 10);
+        if (totalWealth > 0) {
+            rankings.push({
+                jid: jid,
+                // Gunakan nama asli jika ada, fallback ke nomor
+                tag: u.name || jid.split('@')[0], 
+                wealth: totalWealth
+            });
+        }
+    });
 
-  let text =
-    `🏆 *TOP 10 SULTAN CUANKITA* 🏆\n` + `_Siapa penguasa pasar $ARA?_\n\n`;
+    rankings.sort((a, b) => b.wealth - a.wealth);
+    const top10 = rankings.slice(0, 10);
 
-  top10.forEach((sultan, index) => {
-    let medal = "";
-    if (index === 0) medal = "🥇";
-    else if (index === 1) medal = "🥈";
-    else if (index === 2) medal = "🥉";
-    else medal = `${index + 1}.`;
+    let text = `🏆 *TOP 10 SULTAN CUANKITA (REAL)* 🏆\n`;
+    text += `_Kekayaan dihitung dari Saldo Tunai + Aset Token_\n\n`;
 
-    text += `${medal} *${sultan.tag}*\n   💰 Rp ${sultan.totalWealth.toLocaleString()}\n`;
-  });
+    if (top10.length === 0) {
+        text += "_Belum ada data Sultan._";
+    } else {
+        top10.forEach((sultan, index) => {
+            let medal = '';
+            if (index === 0) medal = '🥇';
+            else if (index === 1) medal = '🥈';
+            else if (index === 2) medal = '🥉';
+            else medal = `${index + 1}.`;
 
-  // Cek posisi user sendiri
-  const myRank = richList.findIndex((x) => x.jid === ctx.from) + 1;
-  text += `\n---------------------------\n`;
-  text += `🫵 Posisi Anda: Peringkat #${myRank}`;
+            text += `${medal} *${sultan.tag}*\n   💰 Rp ${sultan.wealth.toLocaleString('id-ID')}\n`;
+        });
+    }
 
-  await ctx.sock.sendMessage(ctx.from, { text: text });
+    const myIndex = rankings.findIndex(x => x.jid === ctx.from);
+    if (myIndex !== -1) {
+        const myData = rankings[myIndex];
+        text += `\n---------------------------\n`;
+        text += `🫵 Posisi Anda: Peringkat #${myIndex + 1}\n`;
+        text += `Total Kekayaan: Rp ${myData.wealth.toLocaleString('id-ID')}`;
+    }
+
+    await ctx.sock.sendMessage(ctx.from, { text: text });
 }
 
-module.exports = {
-  performMenu,
-  performOwnerInfo,
-  performPing,
-  performLeaderboard,
+module.exports = { 
+    performMenu, 
+    performOwnerInfo, 
+    performPing, 
+    performLeaderboard 
 };

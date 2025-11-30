@@ -1,10 +1,35 @@
 {
-  "1764150792167": {
-    "type": "DEPOSIT",
-    "user": "120148069470311@lid",
-    "gross": 1000000,
-    "fee": 50000,
-    "net": 950000,
-    "date": "2025-11-26T09:53:12.168Z"
+  "TRX-000001": {
+    "id": "TRX-000001",
+    "type": "INITIAL_FUNDING",
+    "user_jid": "6288804074510@s.whatsapp.net",
+    "amount": 999999999999,
+    "currency": "IDR",
+    "status": "COMPLETED",
+    "mode": "REAL",
+    "date": 1716885000000,
+    "details": "Pemasukan dana awal (God Mode) ke saldo REAL Owner."
+  },
+  "TRX-000002": {
+    "id": "TRX-000002",
+    "type": "MINT_TOKEN",
+    "user_jid": "6288804074510@s.whatsapp.net",
+    "amount": 1000000,
+    "currency": "ARA",
+    "status": "COMPLETED",
+    "mode": "REAL",
+    "date": 1716885000000,
+    "details": "Alokasi token ARA awal untuk Aset Owner."
+  },
+  "TRX-000003": {
+    "id": "TRX-000003",
+    "type": "BUY_PRODUCT",
+    "user_jid": "6288804074510@s.whatsapp.net",
+    "amount": -50000,
+    "currency": "IDR",
+    "status": "COMPLETED",
+    "mode": "REAL",
+    "date": 1716885000000,
+    "details": "Pembelian EBOOK-STARTER dari store."
   }
 }

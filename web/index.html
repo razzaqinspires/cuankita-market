@@ -1,98 +1,355 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cuankita Pro Exchange</title>
+    <title>Cuankita Quantum Terminal</title>
+    
+    <!-- Load Chart.js & Fonts -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;600;800&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+    
     <style>
-        :root { --bg: #0b0e11; --panel: #181a20; --text: #eaecef; --green: #0ecb81; --red: #f6465d; --border: #2b3139; }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Segoe UI', monospace; background-color: var(--bg); color: var(--text); font-size: 12px; height: 100vh; display: flex; flex-direction: column; }
-        
-        /* HEADER (UPDATED WITH MINING LINK) */
-        header { height: 50px; background: var(--panel); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 20px; justify-content: space-between; }
-        .logo { font-weight: 800; font-size: 18px; color: #F7BF64; letter-spacing: 1px; }
-        .price-ticker { font-size: 16px; font-weight: bold; margin-left: 20px; }
-        .btn-login { background: #F7BF64; color: #000; padding: 5px 15px; text-decoration: none; border-radius: 4px; font-weight: bold; }
+        /* --- QUANTUM THEME VARIABLES --- */
+        :root {
+            --bg: #05070a;
+            --card: rgba(20, 25, 35, 0.6); /* Glassmorphism Base */
+            --border: rgba(255, 255, 255, 0.08);
+            --text: #e0f0ff;
+            --text-dim: #6a7a8c;
+            
+            --accent: #D4AF37;   /* Gold (Luxury) */
+            --cyan: #00f3ff;     /* Cyber Blue */
+            --green: #00E396;    /* Trading Green */
+            --red: #FF003C;      /* Cyber Red */
+        }
 
-        /* GRID LAYOUT */
-        .main-grid { display: grid; grid-template-columns: 250px 1fr 280px; flex: 1; overflow: hidden; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         
-        /* PANELS */
-        .panel { border-right: 1px solid var(--border); display: flex; flex-direction: column; }
-        .panel-header { padding: 10px; background: var(--panel); font-weight: bold; color: #848e9c; border-bottom: 1px solid var(--border); }
+        body { 
+            background-color: var(--bg); 
+            background-image: radial-gradient(circle at 50% 0%, #1a2a3a 0%, #05070a 70%);
+            color: var(--text); 
+            font-family: 'Exo 2', sans-serif; 
+            height: 100vh; 
+            overflow: hidden; 
+            display: flex; 
+            flex-direction: column; 
+        }
         
-        /* ORDER BOOK */
-        .order-list { padding: 5px; flex: 1; overflow-y: auto; }
-        .order-row { display: flex; justify-content: space-between; padding: 2px 5px; font-family: monospace; font-size: 11px; }
-        .text-green { color: var(--green); } .text-red { color: var(--red); } .text-white { color: var(--text); }
-        
-        /* CHART AREA */
-        .chart-container { padding: 10px; background: var(--bg); position: relative; flex: 1; display: flex; flex-direction: column; }
-        .market-stat { display: flex; gap: 20px; margin-bottom: 10px; padding: 10px; background: var(--panel); border-radius: 4px; }
-        .stat-item span { display: block; color: #848e9c; font-size: 10px; }
-        .stat-item strong { font-size: 13px; }
+        /* SCROLLBAR CUSTOMIZATION */
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(0, 243, 255, 0.2); border-radius: 2px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--cyan); }
 
-        /* TRADES */
-        .trade-list { flex: 1; overflow-y: auto; }
+        /* --- HEADER SECTION --- */
+        header {
+            height: 65px; 
+            border-bottom: 1px solid var(--border); 
+            background: rgba(10, 15, 25, 0.8);
+            backdrop-filter: blur(10px);
+            display: flex; 
+            align-items: center; 
+            padding: 0 24px; 
+            justify-content: space-between;
+            z-index: 100;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.5);
+        }
         
-        /* RESPONSIVE */
-        @media (max-width: 768px) {
-            .main-grid { grid-template-columns: 1fr; grid-template-rows: auto auto auto; overflow-y: auto; }
-            .chart-container { height: 300px; }
-            .panel { border-right: none; border-bottom: 1px solid var(--border); height: 300px; }
+        .brand { 
+            font-family: 'Rajdhani', sans-serif; 
+            font-weight: 800; 
+            font-size: 24px; 
+            color: var(--text);
+            letter-spacing: 2px; 
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-shadow: 0 0 10px rgba(0, 243, 255, 0.3);
+        }
+        
+        .live-indicator {
+            width: 6px; height: 6px; background: var(--cyan); border-radius: 50%;
+            box-shadow: 0 0 8px var(--cyan), 0 0 15px var(--cyan);
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse { 0% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(1.2); } 100% { opacity: 1; transform: scale(1); } }
+
+        /* NEWS TICKER */
+        .ticker-wrap { 
+            flex: 1; margin: 0 40px; overflow: hidden; height: 32px; position: relative; 
+            background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 4px;
+        }
+        .ticker { 
+            position: absolute; white-space: nowrap; animation: marquee 30s linear infinite; 
+            font-family: 'Rajdhani', monospace; font-size: 14px; font-weight: 600; line-height: 30px; 
+            color: var(--cyan); text-shadow: 0 0 5px rgba(0, 243, 255, 0.2);
+        }
+        @keyframes marquee { 0% { left: 100%; } 100% { left: -100%; } }
+        
+        /* NAVIGATION BUTTONS */
+        .nav-group { display: flex; gap: 12px; }
+        .btn {
+            background: rgba(0, 243, 255, 0.05); 
+            color: var(--cyan); 
+            padding: 8px 18px; 
+            text-decoration: none; 
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 700; 
+            font-size: 14px; 
+            text-transform: uppercase; 
+            border-radius: 4px; 
+            border: 1px solid rgba(0, 243, 255, 0.2);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex; align-items: center; gap: 8px;
+            letter-spacing: 1px;
+        }
+        .btn:hover { 
+            background: rgba(0, 243, 255, 0.15); 
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.2);
+            border-color: var(--cyan);
+            color: #fff;
+        }
+        .btn-gold { 
+            background: linear-gradient(135deg, rgba(212, 175, 55, 0.2), rgba(0,0,0,0)); 
+            border-color: var(--accent); 
+            color: var(--accent); 
+        }
+        .btn-gold:hover { 
+            background: var(--accent); 
+            color: #000; 
+            box-shadow: 0 0 20px rgba(212, 175, 55, 0.4); 
+        }
+
+        /* --- MAIN GRID LAYOUT --- */
+        .grid {
+            display: grid;
+            grid-template-columns: 320px 1fr 350px;
+            grid-template-rows: 90px 1fr 300px; 
+            height: calc(100vh - 65px);
+            gap: 15px;
+            padding: 15px;
+        }
+        
+        .box { 
+            background: var(--card); 
+            backdrop-filter: blur(10px);
+            overflow: hidden; 
+            display: flex; flex-direction: column; position: relative; 
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            transition: border-color 0.3s;
+        }
+        .box:hover { border-color: rgba(255,255,255,0.15); }
+        
+        .box-header {
+            padding: 12px 15px; 
+            border-bottom: 1px solid var(--border);
+            background: rgba(255,255,255,0.02);
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 14px; font-weight: 700; 
+            color: var(--text-dim); 
+            text-transform: uppercase; 
+            letter-spacing: 1.5px;
+            display: flex; justify-content: space-between;
+        }
+
+        /* GRID AREA ASSIGNMENT */
+        .area-stats { grid-column: 2; grid-row: 1; display: flex; align-items: center; justify-content: space-around; }
+        .area-chart { grid-column: 2; grid-row: 2 / 3; }
+        .area-terminal { grid-column: 2; grid-row: 3; }
+        
+        .area-orderbook { grid-column: 1; grid-row: 1 / 4; }
+        
+        .area-trades { grid-column: 3; grid-row: 1 / 3; }
+        .area-leaderboard { grid-column: 3; grid-row: 3; }
+
+        /* --- COMPONENT STYLES --- */
+
+        /* Stats Header */
+        .stat-box { text-align: left; }
+        .stat-label { font-size: 11px; color: var(--text-dim); margin-bottom: 4px; font-weight: 600; letter-spacing: 0.5px; }
+        .stat-val { font-family: 'Rajdhani', monospace; font-size: 22px; font-weight: 700; text-shadow: 0 0 10px rgba(0,0,0,0.5); }
+        .text-green { color: var(--green); } 
+        .text-red { color: var(--red); }
+        .text-gold { color: var(--accent); }
+        .text-cyan { color: var(--cyan); }
+
+        /* Lists (Orderbook, Trades) */
+        .list-header { 
+            display: flex; justify-content: space-between; padding: 10px 15px; 
+            font-size: 11px; color: var(--text-dim); font-family: 'Exo 2', sans-serif; font-weight: 600;
+            background: rgba(0,0,0,0.2);
+        }
+        .list-container { flex: 1; overflow-y: auto; font-family: 'Rajdhani', monospace; font-size: 14px; font-weight: 500; }
+        .row { display: flex; justify-content: space-between; padding: 4px 15px; cursor: pointer; transition: background 0.1s; }
+        .row:hover { background: rgba(255,255,255,0.05); }
+        
+        /* Orderbook Specific */
+        .book-row { position: relative; display: flex; justify-content: space-between; padding: 4px 15px; z-index: 1; }
+        .depth-bar { position: absolute; top: 1px; bottom: 1px; opacity: 0.15; z-index: -1; transition: width 0.3s; }
+        .bar-red { right: 0; background: var(--red); } 
+        .bar-green { right: 0; background: var(--green); }
+        
+        .spread-box { 
+            padding: 12px; text-align: center; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); 
+            font-size: 20px; font-weight: 800; font-family: 'Rajdhani', monospace; letter-spacing: 1px;
+            background: rgba(0,0,0,0.3);
+        }
+
+        /* Leaderboard Specific */
+        .rank-badge { 
+            display: inline-block; width: 20px; text-align: center; 
+            background: rgba(255,255,255,0.1); color: #aaa; border-radius: 4px; margin-right: 10px; font-size: 12px; font-weight: bold;
+        }
+        .rank-1 { background: var(--accent); color: #000; box-shadow: 0 0 10px var(--accent); }
+        .rank-2 { background: #C0C0C0; color: #000; }
+        .rank-3 { background: #CD7F32; color: #000; }
+
+        /* Terminal Style */
+        .terminal-content {
+            padding: 15px; 
+            font-family: 'JetBrains Mono', monospace; 
+            font-size: 12px; 
+            color: var(--cyan); 
+            line-height: 1.6; 
+            opacity: 0.9;
+            text-shadow: 0 0 5px rgba(0, 243, 255, 0.4);
+        }
+
+        /* RESPONSIVE MOBILE */
+        @media (max-width: 1200px) {
+            .grid { 
+                grid-template-columns: 1fr; 
+                grid-template-rows: auto; 
+                display: flex; flex-direction: column; 
+                height: auto; overflow-y: auto; 
+                padding: 10px;
+            }
+            .area-stats { padding: 20px; flex-wrap: wrap; gap: 20px; order: 1; }
+            .area-chart { height: 400px; order: 2; }
+            .area-orderbook { height: 400px; order: 3; }
+            .area-trades { height: 300px; order: 4; }
+            .area-leaderboard { height: 300px; order: 5; }
+            .area-terminal { display: none; }
+            .ticker-wrap { display: none; } 
         }
     </style>
 </head>
 <body>
 
     <header>
-        <div style="display:flex; align-items:center;">
-            <div class="logo">CUANKITA</div>
-            <div id="header-price" class="price-ticker text-green">Loading...</div>
+        <div class="brand">
+            <div class="live-indicator"></div>
+            CUANKITA<span style="color:#fff; font-weight:400;">QUANTUM</span>
         </div>
         
-        <div style="display:flex; gap:10px;">
-            <a href="mining.html" class="btn-login" style="background:#333; color:#fff; border:1px solid #555;">⛏️ MINING</a>
-            <a href="https://wa.me/6283891067389?text=.menu" class="btn-login">TRADE NOW</a>
+        <!-- NEWS TICKER -->
+        <div class="ticker-wrap">
+            <div class="ticker" id="news-content">INITIALIZING QUANTUM CONNECTION... DECRYPTING MARKET DATA...</div>
+        </div>
+        
+        <!-- NAVIGATION -->
+        <div class="nav-group">
+            <a href="mining.html" class="btn" target="_blank">
+                <span>⚡</span> Mining Verse
+            </a>
+            <a href="https://wa.me/6283891067389?text=.menu" class="btn btn-gold" target="_blank">
+                Connect Wallet
+            </a>
         </div>
     </header>
 
-    <div class="main-grid">
-        <div class="panel">
-            <div class="panel-header">ORDER BOOK</div>
-            <div class="order-list">
-                <div style="display:flex; justify-content:space-between; padding:5px; color:#848e9c; font-size:10px;">
-                    <span>Price(IDR)</span><span>Amount(ARA)</span>
-                </div>
-                <div id="asks-container"></div> <div id="current-price-mid" style="font-size:16px; padding:10px; text-align:center; font-weight:bold;" class="text-green">---</div>
-                <div id="bids-container"></div> </div>
+    <div class="grid">
+        <!-- --- LEFT PANEL: ORDER BOOK --- -->
+        <div class="box area-orderbook">
+            <div class="box-header">
+                <span>Order Book</span>
+                <span>ARA/IDR</span>
+            </div>
+            
+            <!-- Asks (Jual) -->
+            <div class="list-header"><span>Price</span><span>Vol</span></div>
+            <div class="list-container" style="flex:1; display:flex; flex-direction:column-reverse;" id="asks">
+                <!-- JS injected here -->
+            </div>
+
+            <!-- Spread / Current Price -->
+            <div id="spread" class="spread-box text-green">---</div>
+
+            <!-- Bids (Beli) -->
+            <div class="list-container" style="flex:1;" id="bids">
+                <!-- JS injected here -->
+            </div>
         </div>
 
-        <div class="chart-container">
-            <div class="market-stat">
-                <div class="stat-item"><span>24h Change</span><strong id="stat-trend">--</strong></div>
-                <div class="stat-item"><span>24h High</span><strong id="stat-high">--</strong></div>
-                <div class="stat-item"><span>24h Low</span><strong id="stat-low">--</strong></div>
-                <div class="stat-item"><span>24h Vol(ARA)</span><strong id="stat-vol">--</strong></div>
+        <!-- --- TOP CENTER: MARKET STATS --- -->
+        <div class="box area-stats">
+            <div class="stat-box">
+                <div class="stat-label">LAST PRICE</div>
+                <div class="stat-val" id="p-last">---</div>
             </div>
-            <div style="flex:1; position:relative;">
-                <canvas id="mainChart"></canvas>
+            <div class="stat-box">
+                <div class="stat-label">24H CHANGE</div>
+                <div class="stat-val" id="p-change">---</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">24H HIGH</div>
+                <div class="stat-val" id="p-high">---</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">24H LOW</div>
+                <div class="stat-val" id="p-low">---</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">MARKET CAP</div>
+                <div class="stat-val text-gold" id="p-mcap">---</div>
             </div>
         </div>
 
-        <div class="panel">
-            <div class="panel-header">MARKET TRADES</div>
-            <div class="order-list">
-                <div style="display:flex; justify-content:space-between; padding:5px; color:#848e9c; font-size:10px;">
-                    <span>Price</span><span>Amount</span><span>Time</span>
-                </div>
-                <div id="trades-container" class="trade-list"></div>
+        <!-- --- CENTER: CHART --- -->
+        <div class="box area-chart">
+            <div style="position: absolute; top: 15px; left: 15px; z-index: 5;">
+                <span style="font-size: 10px; background: rgba(255,255,255,0.1); padding: 4px 10px; border-radius: 4px; color: #fff; font-weight:bold; letter-spacing:1px; border:1px solid rgba(255,255,255,0.1);">LIVE • 1S</span>
+            </div>
+            <canvas id="chart"></canvas>
+        </div>
+
+        <!-- --- BOTTOM CENTER: TERMINAL --- -->
+        <div class="box area-terminal">
+            <div class="box-header">SYSTEM TERMINAL</div>
+            <div class="terminal-content">
+                > Secure connection established: wss://cuankita-core.net<br>
+                > Syncing blockchain nodes... [OK]<br>
+                > Fetching institutional order depth... [OK]<br>
+                > <span style="color:#fff">System Online. Trading Engine v3.0 Active.</span>
+            </div>
+        </div>
+
+        <!-- --- RIGHT TOP: RECENT TRADES --- -->
+        <div class="box area-trades">
+            <div class="box-header">MARKET TRADES</div>
+            <div class="list-header"><span>Price</span><span>Amount</span><span>Time</span></div>
+            <div class="list-container" id="trades">
+                <!-- JS injected here -->
+            </div>
+        </div>
+
+        <!-- --- RIGHT BOTTOM: LEADERBOARD --- -->
+        <div class="box area-leaderboard">
+            <div class="box-header">
+                <span>🏆 TOP WHALES</span>
+                <span style="font-size:9px; color:var(--accent)">REAL ACC</span>
+            </div>
+            <div class="list-container" id="leaderboard">
+                <!-- JS injected here -->
             </div>
         </div>
     </div>
 
+    <!-- Load the Logic Script -->
     <script src="assets/script.js"></script>
 </body>
 </html>

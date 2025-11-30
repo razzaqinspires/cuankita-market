@@ -1,27 +1,54 @@
-const { when } = require("../engine/dsl");
-const general = require("../services/general.js");
-const registry = require("../engine/commandRegistry"); // <-- IMPORT REGISTRY
+const { when } = require('../engine/dsl');
+const general = require('../services/general');
+const registry = require('../engine/commandRegistry');
 
 console.log("⚙️ Loading General System Rules...");
 
-// --- DAFTAR COMMAND KE REGISTRY ---
-registry.register("menu", "SISTEM", "Menampilkan daftar semua command ini");
-registry.register("ping", "SISTEM", "Cek latency dan status bot");
-registry.register("owner", "SISTEM", "Menampilkan kontak Owner dan Developer");
-registry.register("top", "SISTEM", "Lihat Peringkat 10 Sultan Terkaya"); // <--- TAMBAHAN
+// ==========================================
+// 1. REGISTRASI MENU
+// ==========================================
 
-// --- IMPLEMENTASI RULE ---
-when(`when message: "menu"`).perform(general.performMenu).commit();
-when(`when message: "help"`).perform(general.performMenu).commit(); // Alias
-when(`when message: "bantuan"`).perform(general.performMenu).commit(); // Alias
+// Kategori: SISTEM
+registry.register('menu', 'SISTEM', 'Menampilkan daftar semua command');
+registry.register('owner', 'SISTEM', 'Menampilkan kontak Owner dan Developer');
+registry.register('ping', 'SISTEM', 'Cek latency dan status bot');
 
-when(`when message: "owner"`).perform(general.performOwnerInfo).commit();
 
-when(`when message: "ping"`).perform(general.performPing).commit();
-when(`when message: "info"`).perform(general.performPing).commit(); // Alias
+// ==========================================
+// 2. DEFINISI NIAT (LOGIC MAPPING)
+// ==========================================
 
-when(`when message: "top"`).perform(general.performLeaderboard).commit();
-when(`when message: "rank"`).perform(general.performLeaderboard).commit();
-when(`when message: "leaderboard"`)
-  .perform(general.performLeaderboard)
-  .commit();
+// --- MENU / BANTUAN ---
+when(`when message: "menu"`)
+    .perform(general.performMenu)
+    .commit();
+
+when(`when message: "help"`) // Alias
+    .perform(general.performMenu)
+    .commit();
+
+when(`when message: "bantuan"`) // Alias Indonesia
+    .perform(general.performMenu)
+    .commit();
+
+// --- OWNER INFO ---
+when(`when message: "owner"`)
+    .perform(general.performOwnerInfo)
+    .commit();
+
+when(`when message: "creator"`) // Alias
+    .perform(general.performOwnerInfo)
+    .commit();
+
+// --- PING / STATUS ---
+when(`when message: "ping"`)
+    .perform(general.performPing)
+    .commit();
+
+when(`when message: "info"`) // Alias
+    .perform(general.performPing)
+    .commit();
+
+when(`when message: "status"`) // Alias
+    .perform(general.performPing)
+    .commit();

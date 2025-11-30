@@ -1,6 +1,12 @@
 {
-  "current_price": 796,
+  "current_price": 1034,
+  "trend": "📉 TURUN",
   "total_supply": 100000,
-  "trend": "📈 NAIK",
-  "manual_override": false
+  "manual_override": false,
+  "last_updated": 1764498844708,
+  "last_news": {
+    "headline": "Isu regulasi krypto global membuat investor retail panik.",
+    "type": "BAD",
+    "timestamp": 1764498738707
+  }
 }

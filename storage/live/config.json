@@ -1,9 +1,22 @@
 {
-  "deposit_rate": 0.05,
-  "service_fee_flat": 0,
-  "broadcast_price_per_user": 500,
+  "system_version": "3.0.0",
   "owner_jid": "6288804074510@s.whatsapp.net",
   "bot_number": "6283891067389",
   "maintenance_mode": false,
-  "system_version": "2.1.0"
+  "system_version": "5.0.0",
+  "deposit_rate": 0.05,
+  "service_fee_flat": 0,
+  "broadcast_price_per_user": 500,
+  "openai_key": "",
+  "gemini_key": "",
+  "payment_methods": {
+    "DANA": "0831-9390-5842 l(A.n Arifi Razzaq)",
+    "BRI": "5320-01-018862-53-6 (A.n Arifi Razzaq)",
+    "GOPAY": "0831-9390-5842 (A.n Arifi Razzaq)",
+    "OVO": "0831-9390-5842 (A.n Arifi Razzaq)",
+    "SAWERIA": "https://saweria.co/arzzq"
+  },
+  "banned_users": [],
+  "allowed_groups": [],
+  "vouchers": {}
 }

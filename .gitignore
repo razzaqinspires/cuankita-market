@@ -1,41 +1,44 @@
-# --- DEPENDENCIES ---
+# --- DEPENDENCIES (SAMPAH SYSTEM) ---
 node_modules/
 package-lock.json
-# (package-lock.json opsional di-ignore, tapi kalau kerja sendiri gapapa di-ignore biar bersih)
+yarn.lock
 
 # --- WHATSAPP SESSION (SANGAT RAHASIA!) ---
-# Ini berisi akses login WA Anda. Jangan pernah di-upload!
+# Berisi kunci enkripsi WA Anda. Jangan pernah di-upload!
 auth_info_baileys/
 
 # --- DATABASE VAULT (PRIVASI KEUANGAN) ---
-# Kita ignore isinya agar saldo user tidak bocor ke publik
+# Mencegah saldo user & transaksi terekspos ke publik
 storage/live/*.json
 storage/temp/
 storage/backups/
 storage/archives/
 storage/inspection/
 
-# Pengecualian: Kita ingin folder 'storage/live' tetap ada strukturnya di git
-# (Nanti kita buat file .gitkeep kosong)
+# Pengecualian: Kita ingin folder 'storage/live' tetap ada saat clone
+# (Pastikan Anda membuat file kosong bernama .gitkeep di dalam folder tersebut)
 !storage/live/.gitkeep
 
 # --- CONFIG & SECRETS ---
 .env
-# Jika config.json berisi API Key pribadi, ignore juga. 
-# Tapi kalau cuma rate standar, boleh tidak di-ignore. 
-# Saran Ara: Ignore saja biar aman.
+# Config berisi API Key OpenAI/Gemini & Nomor HP Owner
 storage/live/config.json
 
-# --- LOGS & SYSTEM ---
+# --- LOGS & DEBUG ---
 logs/
 *.log
 npm-debug.log
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# --- SYSTEM FILES ---
 .DS_Store
 Thumbs.db
 .vscode/
+.idea/
 
-# --- WEB BRIDGE (PENTING) ---
-# Kita mau upload web/, TAPI kita tidak mau upload file json statis 
-# jika itu dianggap sampah history.
-# TAPI: Karena Boss mau GitHub Pages baca ini, JANGAN di-ignore.
-# Jadi bagian web/data/market.json DIBIARKAN TERBUKA.
+# --- WEB BRIDGE NOTE ---
+# File 'web/data/market.json' SENGAJA TIDAK DI-IGNORE
+# karena file tersebut harus di-upload ke GitHub agar Website bisa update data.

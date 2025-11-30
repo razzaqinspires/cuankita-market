@@ -1,51 +1,54 @@
-const { when } = require("../engine/dsl");
-const marketing = require("../services/marketing");
-const registry = require("../engine/commandRegistry");
+const { when } = require('../engine/dsl');
+const marketing = require('../services/marketing');
+const registry = require('../engine/commandRegistry');
 
 console.log("📢 Loading Marketing Rules...");
 
-// --- DAFTAR COMMAND (Hanya Redeem yang publik) ---
-registry.register(
-  "redeem",
-  "MINING & REWARD",
-  "Klaim Kode Voucher / Gift",
-  "[kode]",
-);
-// .bc dan .voucher tidak didaftarkan agar rahasia
+// ==========================================
+// 1. REGISTRASI MENU
+// ==========================================
 
-// --- IMPLEMENTASI RULE ---
+// Kategori: MINING & REWARD (Public)
+registry.register('redeem', 'MINING & REWARD', 'Klaim Kode Voucher / Gift', '[kode]');
 
-// 1. Broadcast (Owner Only)
+// Kategori: ADMIN (Owner Only)
+registry.register('bc', 'ADMIN', 'Broadcast pesan ke semua user', '[target] [pesan]');
+registry.register('voucher', 'ADMIN', 'Buat Kode Voucher Bagi-bagi', '[jumlah] [hari]');
+
+
+// ==========================================
+// 2. DEFINISI NIAT (LOGIC MAPPING)
+// ==========================================
+
+// --- BROADCAST ---
 when(`when message: "bc"`)
-  .expect("target")
-  .expect("message")
-  .perform(marketing.performBroadcast)
-  .commit();
+    .perform(marketing.performBroadcast)
+    .commit();
 
 when(`when message: "broadcast"`)
-  .expect("target")
-  .expect("message")
-  .perform(marketing.performBroadcast)
-  .commit();
+    .perform(marketing.performBroadcast)
+    .commit();
 
-// 2. Buat Voucher (Owner Only)
+// --- CREATE VOUCHER ---
 when(`when message: "voucher"`)
-  .expect("amount")
-  .expect("quota")
-  .perform(marketing.performCreateVoucher)
-  .commit();
-when(`when message: "create"`) // Alias
-  .expect("amount")
-  .expect("quota")
-  .perform(marketing.performCreateVoucher)
-  .commit();
+    .expect("amount")
+    .expect("days")
+    .perform(marketing.performCreateVoucher)
+    .commit();
 
-// 3. Redeem Voucher (Public)
+when(`when message: "createvoucher"`) // Alias panjang
+    .expect("amount")
+    .expect("days")
+    .perform(marketing.performCreateVoucher)
+    .commit();
+
+// --- REDEEM VOUCHER ---
 when(`when message: "redeem"`)
-  .expect("code")
-  .perform(marketing.performRedeem)
-  .commit();
-when(`when message: "klaim"`) // Alias
-  .expect("code")
-  .perform(marketing.performRedeem)
-  .commit();
+    .expect("code")
+    .perform(marketing.performRedeemVoucher)
+    .commit();
+
+when(`when message: "klaim"`) // Alias Indonesia
+    .expect("code")
+    .perform(marketing.performRedeemVoucher)
+    .commit();

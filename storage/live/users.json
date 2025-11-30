@@ -1,22 +1,39 @@
 {
-  "120148069470311@lid": {
-    "saldo": 12537,
-    "assets": {
-      "ara_coin": 1203
+  "6288804074510@s.whatsapp.net": {
+    "name": "Big Boss",
+    "gender": "Laki-laki",
+    "dob": "01-01-1990",
+    "age": 30,
+    "account_type": "REAL",
+    "xp": 9999999,
+    "balance_real": 999999999999,
+    "assets_real": {
+      "ara_coin": 1000000
     },
-    "last_daily_time": 1764157410693,
-    "positions": [
-      {
-        "id": "1416",
-        "type": "SHORT",
-        "margin": 10000,
-        "leverage": 1,
-        "entryPrice": 672,
-        "size": 10000,
-        "timestamp": 1764159461416
-      }
+    "positions_real": [],
+    "balance_demo": 100000000,
+    "assets_demo": {},
+    "positions_demo": [],
+    "library": [
+      "EBOOK_GOD_MODE"
     ],
-    "last_mine_time": 1764159387041,
-    "account_type": "DEMO"
+    "joined_at": 1716885000000,
+    "referral_commission": 0,
+    "referrer_id": null
+  },
+  "120148069470311@lid": {
+    "name": "Arifi Razzaq",
+    "gender": "Laki-laki",
+    "dob": "13-11-2001",
+    "age": 24,
+    "account_type": "DEMO",
+    "balance_real": 0,
+    "assets_real": {},
+    "positions_real": [],
+    "balance_demo": 500000,
+    "assets_demo": {},
+    "positions_demo": [],
+    "xp": 0,
+    "joined_at": 1764498591066
   }
 }
